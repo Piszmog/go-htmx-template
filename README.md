@@ -4,7 +4,7 @@ This is a template repository for stiches together a number of technologies that
 
 ## Getting Started
 
-TODO
+In the top right, select the dropdown __Use this template__ and select __Create a new repository__.
 
 ## Technologies
 
