@@ -1,0 +1,50 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The version to release (e.g. v1.0.0)
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Release
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.x
+      - name: Get Version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          MODIFIED_VERSION="${VERSION//./-}"
+          echo "VERSION_GCP=$MODIFIED_VERSION" >> $GITHUB_ENV
+      - run: go mod download
+      - run: go install github.com/a-h/templ/cmd/templ@latest
+      - name: Generate Templ Files
+        run: make generate-templ
+      - name: Generate CSS
+        run: |
+          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+          mv tailwindcss-linux-x64 tailwindcss
+          ./tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@${{ github.event.inputs.version }}.css --minify
+      - name: Build Application
+        run: go build -o ./app -ldflags="-s -w -X version.Value=${{ github.event.inputs.version }}"
+      - name: Create Tag
+        uses: negz/create-tag@v1
+        with:
+          version: ${{ github.event.inputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ github.event.inputs.version }}
+          tag_name: ${{ github.event.inputs.version }}
+          generate_release_notes: true
+          files: app
