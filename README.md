@@ -1,6 +1,7 @@
 # Go + HTMX Template
 
-This is a template repository for stiches together a number of technologies that you may use to server a website using Go and HTMX.
+This is a template repository for stiches together a number of technologies that you may use 
+to server a website using Go and HTMX.
 
 ## Getting Started
 
@@ -12,10 +13,12 @@ A few different technologies are configured to help getting off the ground easie
 
 - [sqlc](https://sqlc.dev/) for database layer
   - Stubbed to use SQLite
+  - This can be easily swapped with [sqlx](https://jmoiron.github.io/sqlx/)
 - [Tailwind CSS](https://tailwindcss.com/) for styling
   - Output is generated with the [CLI](https://tailwindcss.com/docs/installation)
 - [templ](https://templ.guide/) for creating HTML
 - [HTMX](https://htmx.org/) for HTML interaction
+- [air](https://github.com/cosmtrek/air) for live reloading of the application.
 
 Everything else uses the standard library.
 
@@ -76,6 +79,8 @@ This is where `templ` files live. Anything you want to render to the user goes h
 This is the directory that `sqlc` generates to. Update `schema.sql` and `queries.sql` to build 
 your database.
 
+This package can be easily update to use `sqlx` as well.
+
 ### Dist
 
 This is where your assets live. Any Javascript, images, or styling needs to go in the 
@@ -87,15 +92,20 @@ go in the `styles/input.css` file.
 
 ### Log
 
-This contains helper function to create a `slog.Logger`.
+This contains helper function to create a `slog.Logger`. Log level and output type can be set
+with then environment variables `LOG_LEVEL` and `LOG_OUTPUT`. The logger will write to 
+`stdout`.
 
 ### Server
 
-This contains everything related to the HTTP server.
+This contains everything related to the HTTP server. It comes with a graceful shutdown handler
+that handles `SIGINT`.
 
 #### Router
 
 This package sets up the routing for the application, such as the `/assets/` path and `/` path.
+It uses the standard libraries mux for routing. You can easily swap out for other HTTP 
+routers such as [gorilla/mux](https://github.com/gorilla/mux).
 
 #### Middleware
 
@@ -105,9 +115,15 @@ This package contains any middleware to configured with routes.
 
 This package contains the handler to handle the actual routes.
 
+#### Styles
+
+This contains the `input.css` that the Tailwind CSS CLI uses to generate your output CSS. 
+Update `input.css` with any custom CSS you need and it will be included in the output CSS.
+
 #### Version
 
-This package allows you to set a version at build time. If not set, the version defaults to `dev`. To set the version run the following command,
+This package allows you to set a version at build time. If not set, the version defaults to 
+`dev`. To set the version run the following command,
 
 ```shell
 go build -o ./app -ldflags="-X version.Value=1.0.0"
@@ -117,9 +133,62 @@ See the `Makefile` for building the application.
 
 ## Run
 
-To run, you will need to compile tailwind and templ first prior to running the application. 
-See the `Makefile` for helper commands to build everything.
+There are a couple builtin ways to run the application - using `air` or the `Makefile` helper 
+commands.
 
-You may also want to look into [air](https://github.com/cosmtrek/air) for performing live 
-reloads of the application.
+### air
 
+`air` has been configured with the file `.air.toml` to allow live reloading of the application 
+when a file changes.
+
+To run, install `air`
+
+```shell
+go install github.com/cosmtrek/air@latest
+```
+
+Then simply run the command
+
+```shell
+air
+```
+
+#### Address Already In Use Error
+
+Sometimes, you may run into the issue _address already in use_. If this is the case, you 
+can run this command to find the PID to kill it.
+
+```shell
+ps aux | grep go
+```
+
+### Makefile
+
+You can also run with the provided `Makefile`. There are commands to generate `templ` files and
+tailwind output css.
+
+```shell
+# Generate and watch templ
+make generate-templ-watch
+
+# Genrate and watch tailwindcss
+make generate-tailwind-watch
+
+# Run application
+make run
+```
+
+## Github Workflow
+
+The repository comes with two Github workflows as well. One called `ci.yml` that lints and 
+tests your code. The other called `release.yml` that creates a tag, GitHub Release, and 
+attaches the Linux binary to the Release.
+
+Note, the version of `github.com/a-h/templ/cmd/templ` matches the version in `go.mod`. If these
+do not match, the build will fail. When upgrading your `templ` version, make sure to update
+`ci.yml` and `release.yml`.
+
+### GoReleaser
+
+If you need to compile for more than Linux, see [GoReleaser](https://goreleaser.com/) for a 
+better release process.
