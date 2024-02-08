@@ -1,4 +1,4 @@
-# Go HTMX Template
+# Go + HTMX Template
 
 This is a template repository for stiches together a number of technologies that you may use to server a website using Go and HTMX.
 
