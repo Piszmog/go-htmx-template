@@ -20,7 +20,7 @@ jobs:
         with:
           go-version: 1.21.x
       - run: go mod download
-      - run: go install github.com/a-h/templ/cmd/templ@latest
+      - run: go install github.com/a-h/templ/cmd/templ@v0.2.543
       - name: Generate Templ Files
         run: make generate-templ
       - name: Generate CSS
