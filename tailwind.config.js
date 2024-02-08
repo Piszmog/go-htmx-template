@@ -2,7 +2,6 @@
 module.exports = {
 	content: [
 		"./components/**/*.templ",
-		"./models/components/**/*.go",
 	],
 	theme: {
 		extend: {},
