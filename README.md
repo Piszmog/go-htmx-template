@@ -45,8 +45,8 @@ Everything else uses the standard library.
 │   └── dist.go
 ├── go.mod
 ├── go.sum
-├── logger
-│   └── logger.go
+├── log
+│   └── log.go
 ├── main.go
 ├── server
 │   ├── handler
@@ -85,7 +85,7 @@ Note, the `dist/assets/css` will be ignored by `git` (configured in `.gitignore`
 files that are written to this directory are done by the Tailwind CSS CLI. Custom styles should
 go in the `styles/input.css` file.
 
-### Logger
+### Log
 
 This contains helper function to create a `slog.Logger`.
 
