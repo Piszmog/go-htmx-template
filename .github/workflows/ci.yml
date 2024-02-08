@@ -1,0 +1,36 @@
+name: CI
+on:
+  push:
+    branches:
+      - main
+    pull_request:
+      - main
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.x
+      - run: go mod download
+      - run: go install github.com/a-h/templ/cmd/templ@latest
+      - run: make generate-templ
+      - name: Lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.54
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.x
+      - run: go mod download
+      - run: go install github.com/a-h/templ/cmd/templ@latest
+      - run: make generate-templ
+      - name: Test
+        run: go test -race ./...
