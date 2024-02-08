@@ -8,6 +8,7 @@ import (
 	"net/http"
 )
 
+// Handler handles requests.
 type Handler struct {
 	Logger  *slog.Logger
 	Queries *db.Queries
