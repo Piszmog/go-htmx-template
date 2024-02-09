@@ -136,6 +136,13 @@ See the `Makefile` for building the application.
 There are a couple builtin ways to run the application - using `air` or the `Makefile` helper 
 commands.
 
+### Prerequisites
+
+- Install [templ](https://templ.guide/quick-start/installation)
+- Install [sqlc](https://docs.sqlc.dev/en/stable/overview/install.html)
+- Install [tailwindcss CLI](https://tailwindcss.com/docs/installation)
+- Install [air](https://github.com/cosmtrek/air#installation)
+
 ### air
 
 `air` has been configured with the file `.air.toml` to allow live reloading of the application 
