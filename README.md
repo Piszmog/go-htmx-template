@@ -159,7 +159,7 @@ Sometimes, you may run into the issue _address already in use_. If this is the c
 can run this command to find the PID to kill it.
 
 ```shell
-ps aux | grep go
+ps aux | grep tmp/main
 ```
 
 ### Makefile
