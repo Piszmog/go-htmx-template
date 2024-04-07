@@ -90,7 +90,6 @@ call the following command,
 migrate create -ext sql -dir db/migrations <name of migration>
 ```
 
-
 This package can be easily update to use `sqlx` as well.
 
 ### Dist
