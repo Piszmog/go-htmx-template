@@ -19,6 +19,7 @@ A few different technologies are configured to help getting off the ground easie
 - [templ](https://templ.guide/) for creating HTML
 - [HTMX](https://htmx.org/) for HTML interaction
 - [air](https://github.com/cosmtrek/air) for live reloading of the application.
+- [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
 
 Everything else uses the standard library.
 
@@ -34,12 +35,12 @@ Everything else uses the standard library.
 │       └── home.templ
 ├── db
 │   ├── db.go
-│   ├── models.go
-│   ├── query.sql
-│   ├── query.sql.go
-│   ├── schema.go
-│   ├── schema.sql
-│   └── sqlite.go
+│   ├── local.go
+│   ├── migrations
+│   │   ├── 20240407203525_init.down.sql
+│   │   └── 20240407203525_init.up.sql
+│   └── queries
+│       └── query.sql
 ├── db.sqlite3
 ├── dist
 │   ├── assets
@@ -57,7 +58,8 @@ Everything else uses the standard library.
 │   │   └── home.go
 │   ├── middleware
 │   │   ├── cache.go
-│   │   └── logging.go
+│   │   ├── logging.go
+│   │   └── middleware.go
 │   ├── router
 │   │   └── router.go
 │   └── server.go
@@ -76,8 +78,18 @@ This is where `templ` files live. Anything you want to render to the user goes h
 
 ### DB
 
-This is the directory that `sqlc` generates to. Update `schema.sql` and `queries.sql` to build 
-your database.
+This is the directory that `sqlc` generates to. Update `queries.sql` to build 
+your database operations.
+
+This project uses [golang migrate](https://github.com/golang-migrate/migrate) for DB 
+migrations. `sqlc` uses the `db/migrations` directory to generating DB tables. Call 
+`db.Migrate(..)` to automatically migrate your database to the latest version. To add migration
+call the following command,
+
+```shell
+migrate create -ext sql -dir db/migrations <name of migration>
+```
+
 
 This package can be easily update to use `sqlx` as well.
 
