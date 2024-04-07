@@ -24,7 +24,7 @@ func NewLoggingMiddleware(logger *slog.Logger, handler http.Handler) *LoggingMid
 func (l *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	l.handler.ServeHTTP(w, r)
-	l.logger.Info(
+	l.logger.Debug(
 		"Request recieved",
 		slog.String("method", r.Method),
 		slog.String("path", r.URL.Path),

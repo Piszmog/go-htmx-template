@@ -9,10 +9,10 @@ import (
 	"net/http"
 )
 
-func New(logger *slog.Logger, queries *db.Queries) http.Handler {
+func New(logger *slog.Logger, database db.Database) http.Handler {
 	h := &handler.Handler{
-		Logger:  logger,
-		Queries: queries,
+		Logger:   logger,
+		Database: database,
 	}
 
 	mux := http.NewServeMux()

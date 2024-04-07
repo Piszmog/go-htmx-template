@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"go-htmx-template/db"
 	"go-htmx-template/log"
 	"go-htmx-template/server"
@@ -15,25 +14,22 @@ func main() {
 		log.GetOutput(),
 	)
 
-	database, err := db.NewSQLite("./db.sqlite3")
+	database, err := db.New(logger, "./db.sqlite3")
 	if err != nil {
 		logger.Error("Failed to create database", "error", err)
 		os.Exit(1)
 	}
 	defer database.Close()
 
-	err = db.InitSchema(context.Background(), database)
-	if err != nil {
-		logger.Error("Failed to initialize schema", "error", err)
-		os.Exit(1)
+	if err = db.Migrate(database); err != nil {
+		logger.Error("failed to migrate database", "error", err)
+		return
 	}
-
-	queries := db.New(database)
 
 	svr := server.New(
 		logger,
 		":8080",
-		server.WithRouter(router.New(logger, queries)),
+		server.WithRouter(router.New(logger, database)),
 	)
 
 	svr.StartAndWait()
