@@ -20,6 +20,11 @@ jobs:
       - run: go mod download
       - run: go install github.com/a-h/templ/cmd/templ@v0.2.648
       - run: make generate-templ
+      - uses: sqlc-dev/setup-sqlc@v3
+        with:
+          sqlc-version: '1.26.0' 
+      - run: sqlc vet
+      - run: sqlc generate
       - name: Lint
         uses: golangci/golangci-lint-action@v3
         with:
@@ -36,5 +41,9 @@ jobs:
       - run: go mod download
       - run: go install github.com/a-h/templ/cmd/templ@v0.2.648
       - run: make generate-templ
+      - uses: sqlc-dev/setup-sqlc@v3
+        with:
+          sqlc-version: '1.26.0' 
+      - run: sqlc generate
       - name: Test
         run: go test -race ./...

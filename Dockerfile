@@ -9,14 +9,16 @@ RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/downlo
     && chmod +x tailwindcss-linux-x64 \
 	&& mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
 
-RUN go install github.com/a-h/templ/cmd/templ@v0.2.648
+RUN go install github.com/a-h/templ/cmd/templ@v0.2.648 \
+	&& go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
 WORKDIR /app
 
 COPY ./ /app
 
 RUN templ generate -path ./components \
-	&& tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@${VERSION}.css --minify
+	&& tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@${VERSION}.css --minify \
+	&& sqlc generate
 
 RUN go build -ldflags="-s -w -X version.Value=${VERSION}" -o my-app
 
