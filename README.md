@@ -20,6 +20,7 @@ A few different technologies are configured to help getting off the ground easie
 - [HTMX](https://htmx.org/) for HTML interaction
 - [air](https://github.com/cosmtrek/air) for live reloading of the application.
 - [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
+- [playwright-go](https://github.com/playwright-community/playwright-go) for E2E testing.
 
 Everything else uses the standard library.
 
@@ -47,6 +48,11 @@ Everything else uses the standard library.
 │   │   └── js
 │   │       └── htmx@1.9.10.min.js
 │   └── dist.go
+├── e2e
+│   ├── e2e_test.go
+│   ├── home_test.go
+│   └── testdata
+│       └── seed.sql
 ├── go.mod
 ├── go.sum
 ├── log
@@ -100,6 +106,20 @@ This is where your assets live. Any Javascript, images, or styling needs to go i
 Note, the `dist/assets/css` will be ignored by `git` (configured in `.gitignore`) since the 
 files that are written to this directory are done by the Tailwind CSS CLI. Custom styles should
 go in the `styles/input.css` file.
+
+### E2E
+
+To test the UI, the `e2e` directory contains the Go tests for performing End to end testing. To
+run the tests, run the command
+
+```shell
+go test -v ./... -tags=e2e
+```
+
+The end to end tests, will start up the app, on a random port, seeding the database using the 
+`seed.sql` file. Once the tests are complete, the app will be stopped.
+
+The E2E tests use Playwright (Go) for better integration into the Go tooling.
 
 ### Log
 
