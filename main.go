@@ -26,9 +26,14 @@ func main() {
 		return
 	}
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	svr := server.New(
 		logger,
-		":8080",
+		":"+port,
 		server.WithRouter(router.New(logger, database)),
 	)
 
