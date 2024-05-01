@@ -23,7 +23,14 @@ type Database interface {
 }
 
 func New(logger *slog.Logger, url string) (Database, error) {
-	return newLocalDB(logger, url)
+	db, err := newLocalDB(logger, url)
+	if err != nil {
+		return nil, err
+	}
+	if err = db.db.Ping(); err != nil {
+		return nil, err
+	}
+	return db, nil
 }
 
 // Migrate runs the migrations on the database. Assumes the database is SQLite.
