@@ -9,7 +9,7 @@ RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/downlo
     && chmod +x tailwindcss-linux-x64 \
 	&& mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
 
-RUN go install github.com/a-h/templ/cmd/templ@v0.2.648 \
+RUN go install github.com/a-h/templ/cmd/templ@v0.2.663 \
 	&& go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
 WORKDIR /app
