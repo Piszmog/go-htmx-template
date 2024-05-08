@@ -3,7 +3,7 @@ module go-htmx-template
 go 1.21.6
 
 require (
-	github.com/a-h/templ v0.2.663
+	github.com/a-h/templ v0.2.680
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/playwright-community/playwright-go v0.4201.1
 	github.com/stretchr/testify v1.8.4
