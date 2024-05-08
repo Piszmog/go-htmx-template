@@ -9,7 +9,7 @@ go mod tidy
 
 new_version=$(grep 'github.com/a-h/templ' go.mod | awk '{print $2}')
 
-sed -i '' -e "s/${old_version}/${old_version}/g" "Dockerfile"
+sed -i '' -e "s/${old_version}/${new_version}/g" "Dockerfile"
 
 for file in ".github/workflows"/*; do
 	if [ -f "$file" ]; then
