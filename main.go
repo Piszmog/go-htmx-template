@@ -1,11 +1,14 @@
 package main
 
 import (
+	"errors"
 	"go-htmx-template/db"
 	"go-htmx-template/log"
 	"go-htmx-template/server"
 	"go-htmx-template/server/router"
 	"os"
+
+	"github.com/golang-migrate/migrate/v4"
 )
 
 func main() {
@@ -21,7 +24,7 @@ func main() {
 	}
 	defer database.Close()
 
-	if err = db.Migrate(database); err != nil {
+	if err = db.Migrate(database); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		logger.Error("failed to migrate database", "error", err)
 		return
 	}
