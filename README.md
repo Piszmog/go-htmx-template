@@ -8,6 +8,12 @@ The template comes with a basic structure of using a SQL DB (`sqlc`), E2E testin
 
 In the top right, select the dropdown __Use this template__ and select __Create a new repository__.
 
+Once cloned, run the `update_module.sh` script to change the module to your module name.
+
+```shell
+./update_module my-new-module
+```
+
 ## Technologies
 
 A few different technologies are configured to help getting off the ground easier.
@@ -18,6 +24,7 @@ A few different technologies are configured to help getting off the ground easie
 - [Tailwind CSS](https://tailwindcss.com/) for styling
   - Output is generated with the [CLI](https://tailwindcss.com/docs/installation)
 - [templ](https://templ.guide/) for creating HTML
+  - The script `upgrade_templ.sh` is available to make upgrading easier
 - [HTMX](https://htmx.org/) for HTML interaction
 - [air](https://github.com/cosmtrek/air) for live reloading of the application.
 - [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
