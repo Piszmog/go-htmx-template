@@ -20,7 +20,7 @@ jobs:
       - run: go mod download
       - run: go install github.com/a-h/templ/cmd/templ@v0.2.680
       - run: make generate-templ
-      - uses: sqlc-dev/setup-sqlc@v3
+      - uses: sqlc-dev/setup-sqlc@v4
         with:
           sqlc-version: '1.26.0' 
       - run: sqlc vet
@@ -41,7 +41,7 @@ jobs:
       - run: go mod download
       - run: go install github.com/a-h/templ/cmd/templ@v0.2.680
       - run: make generate-templ
-      - uses: sqlc-dev/setup-sqlc@v3
+      - uses: sqlc-dev/setup-sqlc@v4
         with:
           sqlc-version: '1.26.0' 
       - run: sqlc generate
@@ -58,7 +58,7 @@ jobs:
       - run: go mod download
       - run: go install github.com/a-h/templ/cmd/templ@v0.2.680
       - run: templ generate -path ./components
-      - uses: sqlc-dev/setup-sqlc@v3
+      - uses: sqlc-dev/setup-sqlc@v4
         with:
           sqlc-version: '1.26.0' 
       - run: sqlc generate
