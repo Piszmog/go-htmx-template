@@ -36,12 +36,12 @@ jobs:
       - name: Build Application
         run: go build -o ./app -ldflags="-s -w -X version.Value=${{ github.event.inputs.version }}"
       - name: Create Tag
-        uses: negz/create-tag@v1
+        uses: piszmog/create-tag@v1
         with:
           version: ${{ github.event.inputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.event.inputs.version }}
           tag_name: ${{ github.event.inputs.version }}
