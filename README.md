@@ -21,6 +21,7 @@ A few different technologies are configured to help getting off the ground easie
 - [sqlc](https://sqlc.dev/) for database layer
   - Stubbed to use SQLite
   - This can be easily swapped with [sqlx](https://jmoiron.github.io/sqlx/)
+  - The script `ipgrade_sqlc.sh` is available to upgrade GitHub Workflow files to latest sqlc version
 - [Tailwind CSS](https://tailwindcss.com/) for styling
   - Output is generated with the [CLI](https://tailwindcss.com/docs/installation)
 - [templ](https://templ.guide/) for creating HTML
