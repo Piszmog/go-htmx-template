@@ -22,7 +22,7 @@ jobs:
       - run: make generate-templ
       - uses: sqlc-dev/setup-sqlc@v4
         with:
-          sqlc-version: '1.26.0' 
+          sqlc-version: '1.27.0' 
       - run: sqlc vet
       - run: sqlc generate
       - name: Lint
@@ -43,7 +43,7 @@ jobs:
       - run: make generate-templ
       - uses: sqlc-dev/setup-sqlc@v4
         with:
-          sqlc-version: '1.26.0' 
+          sqlc-version: '1.27.0' 
       - run: sqlc generate
       - name: Test
         run: go test -race ./...
@@ -60,7 +60,7 @@ jobs:
       - run: templ generate -path ./components
       - uses: sqlc-dev/setup-sqlc@v4
         with:
-          sqlc-version: '1.26.0' 
+          sqlc-version: '1.27.0' 
       - run: sqlc generate
       - run: go test ./... -tags=e2e
   docker-publish:
