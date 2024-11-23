@@ -14,6 +14,13 @@ Once cloned, run the `update_module.sh` script to change the module to your modu
 ./update_module my-new-module
 ```
 
+Then you can proceed to generate sqlc and templ files
+
+```shell
+sqlc generate
+make generate-templ
+```
+
 ## Technologies
 
 A few different technologies are configured to help getting off the ground easier.
