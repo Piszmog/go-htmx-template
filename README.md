@@ -21,6 +21,13 @@ sqlc generate
 make generate-templ
 ```
 
+Then you can upgrade your module dependencies with
+
+```shell
+go get -u
+go mod tidy
+```
+
 ## Technologies
 
 A few different technologies are configured to help getting off the ground easier.
