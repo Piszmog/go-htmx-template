@@ -8,7 +8,7 @@ require (
 	github.com/a-h/templ v0.2.793
 	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/playwright-community/playwright-go v0.4201.1
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
 	modernc.org/sqlite v1.34.1
 )
