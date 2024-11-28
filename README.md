@@ -49,6 +49,7 @@ A few different technologies are configured to help getting off the ground easie
   - The script `upgrade_templ.sh` is available to make upgrading easier
 - [HTMX](https://htmx.org/) for HTML interaction
   - The script `upgrade_htmx.sh` is available to make upgrading easier
+  - Already included in this template
 - [air](https://github.com/cosmtrek/air) for live reloading of the application.
 - [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
 - [playwright-go](https://github.com/playwright-community/playwright-go) for E2E testing.
