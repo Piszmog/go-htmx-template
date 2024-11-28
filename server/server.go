@@ -22,14 +22,13 @@ func New(logger *slog.Logger, addr string, opts ...Option) *Server {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
+
+	server := &Server{srv: srv, logger: logger}
 	for _, opt := range opts {
-		opt(&Server{srv: srv})
+		opt(server)
 	}
 
-	return &Server{
-		srv:    srv,
-		logger: logger,
-	}
+	return server
 }
 
 // Option represents a server option.
