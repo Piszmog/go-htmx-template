@@ -9,10 +9,10 @@ import (
 func New(level Level, output Output) *slog.Logger {
 	var h slog.Handler
 	switch output {
-	case OutputJson:
+	case OutputJSON:
 		h = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level.ToSlog()})
 	case OutputText:
-		h = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level.ToSlog()})
+		fallthrough
 	default:
 		h = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level.ToSlog()})
 	}
@@ -75,8 +75,8 @@ func GetLevel() Level {
 type Output string
 
 const (
-	// OutputJson is the JSON log output.
-	OutputJson Output = "json"
+	// OutputJSON is the JSON log output.
+	OutputJSON Output = "json"
 	// OutputText is the text log output.
 	OutputText Output = "text"
 )
@@ -85,7 +85,7 @@ const (
 func ToOutput(output string) Output {
 	switch output {
 	case "json":
-		return OutputJson
+		return OutputJSON
 	case "text":
 		return OutputText
 	default:
