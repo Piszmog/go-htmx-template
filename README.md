@@ -33,7 +33,51 @@ go get -u
 go mod tidy
 ```
 
-Install the following technologies to ensure everything works.
+## Run
+
+There are a couple builtin ways to run the application - using `air` or the `Makefile` helper 
+commands.
+
+### Prerequisites
+
+- Install [templ](https://templ.guide/quick-start/installation)
+- Install [sqlc](https://docs.sqlc.dev/en/stable/overview/install.html)
+- Install [tailwindcss CLI](https://tailwindcss.com/docs/installation)
+- Install [air](https://github.com/cosmtrek/air#installation)
+
+### air
+
+`air` has been configured with the file `.air.toml` to allow live reloading of the application 
+when a file changes.
+
+To run, install `air`
+
+```shell
+go install github.com/cosmtrek/air@latest
+```
+
+Then simply run the command
+
+```shell
+air
+```
+
+### Makefile
+
+Air will detect changes to `templ`, `css`, and `sql` files and rebuild and run the application. 
+You can also run with the provided `Makefile`. There are commands to generate `templ` files and
+tailwind output css.
+
+```shell
+# Generate and watch templ
+make generate-templ-watch
+
+# Genrate and watch tailwindcss
+make generate-tailwind-watch
+
+# Run application
+make run
+```
 
 ## Technologies
 
@@ -53,8 +97,6 @@ A few different technologies are configured to help getting off the ground easie
 - [air](https://github.com/cosmtrek/air) for live reloading of the application.
 - [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
 - [playwright-go](https://github.com/playwright-community/playwright-go) for E2E testing.
-
-Everything else uses the standard library.
 
 ## Structure
 
@@ -193,60 +235,6 @@ go build -o ./app -ldflags="-X version.Value=1.0.0"
 ```
 
 See the `Makefile` for building the application.
-
-## Run
-
-There are a couple builtin ways to run the application - using `air` or the `Makefile` helper 
-commands.
-
-### Prerequisites
-
-- Install [templ](https://templ.guide/quick-start/installation)
-- Install [sqlc](https://docs.sqlc.dev/en/stable/overview/install.html)
-- Install [tailwindcss CLI](https://tailwindcss.com/docs/installation)
-- Install [air](https://github.com/cosmtrek/air#installation)
-
-### air
-
-`air` has been configured with the file `.air.toml` to allow live reloading of the application 
-when a file changes.
-
-To run, install `air`
-
-```shell
-go install github.com/cosmtrek/air@latest
-```
-
-Then simply run the command
-
-```shell
-air
-```
-
-#### Address Already In Use Error
-
-Sometimes, you may run into the issue _address already in use_. If this is the case, you 
-can run this command to find the PID to kill it.
-
-```shell
-ps aux | grep tmp/main
-```
-
-### Makefile
-
-You can also run with the provided `Makefile`. There are commands to generate `templ` files and
-tailwind output css.
-
-```shell
-# Generate and watch templ
-make generate-templ-watch
-
-# Genrate and watch tailwindcss
-make generate-tailwind-watch
-
-# Run application
-make run
-```
 
 ## Github Workflow
 
