@@ -11,7 +11,7 @@ In the top right, select the dropdown __Use this template__ and select __Create 
 Once cloned, run the `update_module.sh` script to change the module to your module name.
 
 ```shell
-./update_module my-new-module
+./update_module "github.com/me/my-new-module"
 ```
 
 Install the following before generating files
