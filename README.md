@@ -162,8 +162,7 @@ This is the directory that `sqlc` generates to. Update `queries.sql` to build
 your database operations.
 
 This project uses [golang migrate](https://github.com/golang-migrate/migrate) for DB 
-migrations. `sqlc` uses the `db/migrations` directory to generating DB tables. Call 
-`db.Migrate(..)` to automatically migrate your database to the latest version. To add migration
+migrations. `sqlc` uses the `db/migrations` directory to generating DB tables. `main.go` calls `db.Migrate(..)` to automatically migrate the DB. To add migration
 call the following command,
 
 ```shell
