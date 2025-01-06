@@ -43,7 +43,7 @@ commands.
 - Install [templ](https://templ.guide/quick-start/installation)
 - Install [sqlc](https://docs.sqlc.dev/en/stable/overview/install.html)
 - Install [tailwindcss CLI](https://tailwindcss.com/docs/installation)
-- Install [air](https://github.com/cosmtrek/air#installation)
+- Install [air](https://github.com/air-verse/air#installation)
 
 ### air
 
@@ -53,7 +53,7 @@ when a file changes.
 To run, install `air`
 
 ```shell
-go install github.com/cosmtrek/air@latest
+go install github.com/air-verse/air@latest
 ```
 
 Then simply run the command
@@ -94,7 +94,7 @@ A few different technologies are configured to help getting off the ground easie
 - [HTMX](https://htmx.org/) for HTML interaction
   - The script `upgrade_htmx.sh` is available to make upgrading easier
   - Already included in this template
-- [air](https://github.com/cosmtrek/air) for live reloading of the application.
+- [air](https://github.com/air-verse/air) for live reloading of the application.
 - [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
 - [playwright-go](https://github.com/playwright-community/playwright-go) for E2E testing.
 
