@@ -18,7 +18,7 @@ jobs:
         with:
           go-version: 1.23.x
       - run: go mod download
-      - run: go install github.com/a-h/templ/cmd/templ@v0.2.793
+      - run: go install github.com/a-h/templ/cmd/templ@v0.3.819
       - run: make generate-templ
       - uses: sqlc-dev/setup-sqlc@v4
         with:
@@ -38,7 +38,7 @@ jobs:
         with:
           go-version: 1.23.x
       - run: go mod download
-      - run: go install github.com/a-h/templ/cmd/templ@v0.2.793
+      - run: go install github.com/a-h/templ/cmd/templ@v0.3.819
       - run: make generate-templ
       - uses: sqlc-dev/setup-sqlc@v4
         with:
@@ -55,7 +55,7 @@ jobs:
         with:
           go-version: 1.22.x
       - run: go mod download
-      - run: go install github.com/a-h/templ/cmd/templ@v0.2.793
+      - run: go install github.com/a-h/templ/cmd/templ@v0.3.819
       - run: templ generate -path ./components
       - uses: sqlc-dev/setup-sqlc@v4
         with:
