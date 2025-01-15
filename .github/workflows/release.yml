@@ -31,7 +31,7 @@ jobs:
           ./tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@${{ github.event.inputs.version }}.css --minify
       - uses: sqlc-dev/setup-sqlc@v4
         with:
-          sqlc-version: '1.27.0' 
+          sqlc-version: '1.27.0'
       - run: sqlc generate
       - name: Build Application
         run: go build -o ./app -ldflags="-s -w -X version.Value=${{ github.event.inputs.version }}"
@@ -39,6 +39,7 @@ jobs:
         uses: piszmog/create-tag@v1
         with:
           version: ${{ github.event.inputs.version }}
+          message: ${{ github.event.inputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Release
         uses: softprops/action-gh-release@v2
