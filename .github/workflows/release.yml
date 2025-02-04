@@ -18,9 +18,9 @@ jobs:
         uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.23.x
+          go-version-file: 'go.mod'
       - run: go mod download
-      - run: go install github.com/a-h/templ/cmd/templ@v0.3.819
+      - run: go install github.com/a-h/templ/cmd/templ@latest
       - name: Generate Templ Files
         run: make generate-templ
       - name: Generate CSS
@@ -31,7 +31,7 @@ jobs:
           ./tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@${{ github.event.inputs.version }}.css --minify
       - uses: sqlc-dev/setup-sqlc@v4
         with:
-          sqlc-version: '1.27.0' 
+          sqlc-version: '1.28.0' 
       - run: sqlc generate
       - name: Build Application
         run: go build -o ./app -ldflags="-s -w -X version.Value=${{ github.event.inputs.version }}"
