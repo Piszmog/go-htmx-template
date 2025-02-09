@@ -39,6 +39,7 @@ jobs:
         uses: piszmog/create-tag@v1
         with:
           version: ${{ github.event.inputs.version }}
+          message: ${{ github.event.inputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Release
         uses: softprops/action-gh-release@v2
