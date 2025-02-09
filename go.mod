@@ -5,12 +5,12 @@ go 1.23.0
 toolchain go1.23.3
 
 require (
-	github.com/a-h/templ v0.3.819
-	github.com/golang-migrate/migrate/v4 v4.18.1
-	github.com/playwright-community/playwright-go v0.4901.0
+	github.com/a-h/templ v0.3.833
+	github.com/golang-migrate/migrate/v4 v4.18.2
+	github.com/playwright-community/playwright-go v0.4902.0
 	github.com/stretchr/testify v1.10.0
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
-	modernc.org/sqlite v1.34.4
+	modernc.org/sqlite v1.34.5
 )
 
 require (
@@ -31,13 +31,13 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/exp v0.0.0-20250207012021-f9890c6ad9f3 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/gc/v3 v3.0.0-20250105121824-520be1a3aee6 // indirect
-	modernc.org/libc v1.61.6 // indirect
+	modernc.org/gc/v3 v3.0.0-20250121204235-2db1fde51ea4 // indirect
+	modernc.org/libc v1.61.12 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
-	modernc.org/memory v1.8.1 // indirect
+	modernc.org/memory v1.8.2 // indirect
 	modernc.org/strutil v1.2.1 // indirect
 	modernc.org/token v1.1.0 // indirect
 )
