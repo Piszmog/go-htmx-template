@@ -42,7 +42,7 @@ commands.
 
 - Install [templ](https://templ.guide/quick-start/installation)
 - Install [sqlc](https://docs.sqlc.dev/en/stable/overview/install.html)
-- Install [tailwindcss CLI](https://tailwindcss.com/docs/installation)
+- Install [tailwindcss CLI](https://tailwindcss.com/docs/installation/tailwind-cli)
 - Install [air](https://github.com/air-verse/air#installation)
 
 ### air
