@@ -87,7 +87,7 @@ A few different technologies are configured to help getting off the ground easie
   - Stubbed to use SQLite
   - This can be easily swapped with [sqlx](https://jmoiron.github.io/sqlx/)
 - [Tailwind CSS](https://tailwindcss.com/) for styling
-  - Output is generated with the [CLI](https://tailwindcss.com/docs/installation)
+  - Output is generated with the [CLI](https://tailwindcss.com/docs/installation/tailwind-cli)
 - [templ](https://templ.guide/) for creating HTML
 - [HTMX](https://htmx.org/) for HTML interaction
   - The script `upgrade_htmx.sh` is available to make upgrading easier
@@ -144,7 +144,6 @@ A few different technologies are configured to help getting off the ground easie
 ├── sqlc.yml
 ├── styles
 │   └── input.css
-├── tailwind.config.js
 └── version
     └── version.go
 ```
