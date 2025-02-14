@@ -20,7 +20,6 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - run: go mod download
-      - run: go install github.com/a-h/templ/cmd/templ@latest
       - name: Generate Templ Files
         run: make generate-templ
       - name: Generate CSS
@@ -29,10 +28,7 @@ jobs:
           chmod +x tailwindcss-linux-x64
           mv tailwindcss-linux-x64 tailwindcss
           ./tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@${{ github.event.inputs.version }}.css --minify
-      - uses: sqlc-dev/setup-sqlc@v4
-        with:
-          sqlc-version: '1.28.0' 
-      - run: sqlc generate
+      - run: go tool sqlc generate
       - name: Build Application
         run: go build -o ./app -ldflags="-s -w -X version.Value=${{ github.event.inputs.version }}"
       - name: Create Tag

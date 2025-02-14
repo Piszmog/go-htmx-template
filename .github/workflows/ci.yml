@@ -18,13 +18,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - run: go mod download
-      - run: go install github.com/a-h/templ/cmd/templ@latest
       - run: make generate-templ
-      - uses: sqlc-dev/setup-sqlc@v4
-        with:
-          sqlc-version: '1.28.0' 
-      - run: sqlc vet
-      - run: sqlc generate
+      - run: go tool sqlc vet
+      - run: go tool sqlc generate
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -38,12 +34,8 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - run: go mod download
-      - run: go install github.com/a-h/templ/cmd/templ@latest
       - run: make generate-templ
-      - uses: sqlc-dev/setup-sqlc@v4
-        with:
-          sqlc-version: '1.28.0' 
-      - run: sqlc generate
+      - run: go tool sqlc generate
       - name: Test
         run: go test -race ./...
   e2e:
@@ -55,12 +47,8 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - run: go mod download
-      - run: go install github.com/a-h/templ/cmd/templ@latest
-      - run: templ generate -path ./components
-      - uses: sqlc-dev/setup-sqlc@v4
-        with:
-          sqlc-version: '1.28.0' 
-      - run: sqlc generate
+      - run: make generate-templ
+      - run: go tool sqlc generate
       - run: go test ./... -tags=e2e
   docker-publish:
     name: Publish Docker

@@ -26,9 +26,9 @@ tmp_dir = "tmp"
   ]
   pre_cmd = [
     "lsof -i :8080 -sTCP:LISTEN | sed 1d | awk '{print $2}' | xargs kill -9",
-    "templ generate -path ./components",
+    "go tool templ generate -path ./components",
     "tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@dev.css",
-    "sqlc generate",
+    "go tool sqlc generate",
   ]
   rerun = true
   rerun_delay = 500
