@@ -14,11 +14,6 @@ Once cloned, run the `update_module.sh` script to change the module to your modu
 ./update_module "github.com/me/my-new-module"
 ```
 
-Install the following before generating files
-
-- [sqlc](https://docs.sqlc.dev/en/latest/overview/install.html)
-- [templ](https://templ.guide/quick-start/installation)
-
 Then you can upgrade your module dependencies with
 
 ```shell
