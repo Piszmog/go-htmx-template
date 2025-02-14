@@ -7,18 +7,16 @@ RUN apk update && apk add --no-cache curl
 
 RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
     && chmod +x tailwindcss-linux-x64 \
-	&& mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
-
-RUN go install github.com/a-h/templ/cmd/templ@latest \
-	&& go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+    && mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
 
 WORKDIR /app
 
 COPY ./ /app
 
-RUN templ generate -path ./components \
-	&& tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@${VERSION}.css --minify \
-	&& sqlc generate
+RUN go mod download \
+    && go tool templ generate -path ./components \
+    && tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@${VERSION}.css --minify \
+    && go tool sqlc generate
 
 RUN go build -ldflags="-s -w -X version.Value=${VERSION}" -o my-app
 

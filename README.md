@@ -19,18 +19,18 @@ Install the following before generating files
 - [sqlc](https://docs.sqlc.dev/en/latest/overview/install.html)
 - [templ](https://templ.guide/quick-start/installation)
 
-Then you can proceed to generate sqlc and templ files
-
-```shell
-sqlc generate
-make generate-templ
-```
-
 Then you can upgrade your module dependencies with
 
 ```shell
 go get -u
 go mod tidy
+```
+
+Then you can proceed to generate sqlc and templ files
+
+```shell
+go tool sqlc generate
+go tool templ generate -path ./components
 ```
 
 ## Run
@@ -40,10 +40,10 @@ commands.
 
 ### Prerequisites
 
-- Install [templ](https://templ.guide/quick-start/installation)
-- Install [sqlc](https://docs.sqlc.dev/en/stable/overview/install.html)
 - Install [tailwindcss CLI](https://tailwindcss.com/docs/installation/tailwind-cli)
 - Install [air](https://github.com/air-verse/air#installation)
+
+`templ` and `sqlc` are included as `go tool` directives.
 
 ### air
 
@@ -285,10 +285,6 @@ See the `Makefile` for building the application.
 The repository comes with two Github workflows as well. One called `ci.yml` that lints and 
 tests your code. The other called `release.yml` that creates a tag, GitHub Release, and 
 attaches the Linux binary to the Release.
-
-Note, the version of `github.com/a-h/templ/cmd/templ` matches the version in `go.mod`. If these
-do not match, the build will fail. When upgrading your `templ` version, make sure to update
-`ci.yml` and `release.yml`.
 
 ### GoReleaser
 
