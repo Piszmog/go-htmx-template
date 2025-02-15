@@ -5,7 +5,7 @@ ARG VERSION='dev'
 
 RUN apk update && apk add --no-cache curl
 
-RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
+RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64-musl \
     && chmod +x tailwindcss-linux-x64-musl \
     && mv tailwindcss-linux-x64-musl /usr/local/bin/tailwindcss
 
