@@ -30,8 +30,7 @@ go tool templ generate -path ./components
 
 ## Run
 
-There are a couple builtin ways to run the application - using `air` or the `Makefile` helper 
-commands.
+`air` is the primary way to run the applications. It watches for file changes. When a file changes, it will rebuild and re-run the application.
 
 ### Prerequisites
 
@@ -55,23 +54,6 @@ Then simply run the command
 
 ```shell
 air
-```
-
-### Makefile
-
-Air will detect changes to `templ`, `css`, and `sql` files and rebuild and run the application. 
-You can also run with the provided `Makefile`. There are commands to generate `templ` files and
-tailwind output css.
-
-```shell
-# Generate and watch templ
-make generate-templ-watch
-
-# Genrate and watch tailwindcss
-make generate-tailwind-watch
-
-# Run application
-make run
 ```
 
 ## Technologies

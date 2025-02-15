@@ -18,7 +18,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - run: go mod download
-      - run: make generate-templ
+      - run: go tool templ generate -path ./components
       - run: go tool sqlc vet
       - run: go tool sqlc generate
       - name: Lint
@@ -34,7 +34,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - run: go mod download
-      - run: make generate-templ
+      - run: go tool templ generate -path ./components
       - run: go tool sqlc generate
       - name: Test
         run: go test -race ./...
@@ -47,7 +47,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - run: go mod download
-      - run: make generate-templ
+      - run: go tool templ generate -path ./components
       - run: go tool sqlc generate
       - run: go test ./... -tags=e2e
   docker-publish:

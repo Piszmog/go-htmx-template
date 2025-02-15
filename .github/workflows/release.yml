@@ -21,7 +21,7 @@ jobs:
           go-version-file: 'go.mod'
       - run: go mod download
       - name: Generate Templ Files
-        run: make generate-templ
+        run: go tool templ generate -path ./components
       - name: Generate CSS
         run: |
           curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64
