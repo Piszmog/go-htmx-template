@@ -6,8 +6,8 @@ ARG VERSION='dev'
 RUN apk update && apk add --no-cache curl
 
 RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
-    && chmod +x tailwindcss-linux-x64 \
-    && mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+    && chmod +x tailwindcss-linux-x64-musl \
+    && mv tailwindcss-linux-x64-musl /usr/local/bin/tailwindcss
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ COPY ./ /app
 
 RUN go mod download \
     && go tool templ generate -path ./components \
-    && /usr/local/bin/tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@${VERSION}.css --minify \
+    && tailwindcss -i ./styles/input.css -o ./dist/assets/css/output@${VERSION}.css --minify \
     && go tool sqlc generate
 
 RUN go build -ldflags="-s -w -X version.Value=${VERSION}" -o my-app
