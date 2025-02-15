@@ -77,7 +77,6 @@ A few different technologies are configured to help getting off the ground easie
 
 ```text
 .
-├── Makefile
 ├── components
 │   ├── core
 │   │   └── html.templ
@@ -91,7 +90,6 @@ A few different technologies are configured to help getting off the ground easie
 │   │   └── 20240407203525_init.up.sql
 │   └── queries
 │       └── query.sql
-├── db.sqlite3
 ├── dist
 │   ├── assets
 │   │   └── js
