@@ -4,11 +4,11 @@ FROM golang:1.24-alpine AS build
 ARG VERSION='dev'
 
 RUN apk update && apk add --no-cache curl
-ENV PATH="/usr/local/bin:${PATH}"
 
 RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
     && chmod +x tailwindcss-linux-x64 \
-    && mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+    && mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss \
+    && ls -lah /usr/local/bin/tailwindcss
 
 WORKDIR /app
 
