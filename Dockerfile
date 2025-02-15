@@ -3,7 +3,7 @@ FROM golang:1.24 AS build
 
 ARG VERSION='dev'
 
-RUN apk update && apk add --no-cache curl
+RUN apt-get update && apt-get install -y curl
 
 RUN curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64 \
     && chmod +x tailwindcss-linux-x64 \
