@@ -14,7 +14,7 @@ require (
 require (
 	cel.dev/expr v0.18.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/Piszmog/go-tw v1.0.0 // indirect
+	github.com/Piszmog/go-tw v1.0.1 // indirect
 	github.com/PuerkitoBio/goquery v1.10.1 // indirect
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
