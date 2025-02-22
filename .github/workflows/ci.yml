@@ -56,7 +56,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs:
       - lint
       - test
@@ -74,6 +73,6 @@ jobs:
           images: ghcr.io/piszmog/go-htmx-template
       - uses: docker/build-push-action@v5
         with:
-          push: true
+          push: ${{ github.ref == 'refs/heads/main' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
