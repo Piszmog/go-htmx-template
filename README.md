@@ -1,6 +1,6 @@
 # Go + HTMX Template
 
-This is a template repository that comes with everything you need to build a Web Application using Go (templ) and HTMX. 
+This is a _opinionated_ template repository that comes with everything you need to build a Web Application using Go (with templ) and HTMX. 
 
 The template comes with a basic structure of using a SQL DB (`sqlc`), E2E testing (playwright), and styling (tailwindcss).
 
@@ -14,6 +14,8 @@ Once cloned, run the `update_module.sh` script to change the module to your modu
 ./update_module "github.com/me/my-new-module"
 ```
 
+Once ran, delete the script.
+
 Then you can upgrade your module dependencies with
 
 ```shell
@@ -21,17 +23,18 @@ go get -u
 go mod tidy
 ```
 
-Then you can proceed to generate sqlc, templ, and styling files
+Finally, you can proceed to generate sqlc and templ files
 
 ```shell
 go tool sqlc generate
 go tool templ generate -path ./components
-go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@dev.css
 ```
 
 ## Run
 
-`air` is the primary way to run the applications. It watches for file changes. When a file changes, it will rebuild and re-run the application.
+`air` is the primary way to run the applications for local development. It watches for file changes. When a file changes, it will rebuild and re-run the application.
+
+When the application is running, go to http://localhost:8080/
 
 ### Prerequisites
 
@@ -140,8 +143,6 @@ call the following command,
 ```shell
 migrate create -ext sql -dir db/migrations <name of migration>
 ```
-
-This package can be easily update to use `sqlx` as well.
 
 #### Example Connection to Turso
 
