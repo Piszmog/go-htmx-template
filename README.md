@@ -260,5 +260,6 @@ See the `Makefile` for building the application.
 ## Github Workflow
 
 The repository comes with two Github workflows as well. One called `ci.yml` that lints and 
-tests your code. The other called `release.yml` that creates a tag, GitHub Release, run [GoReleaser](https://goreleaser.com/) to build and attach all the binaries.
+tests your code. The other called `release.yml` that creates a tag, GitHub Release, run [GoReleaser](https://goreleaser.com/) to build and 
+attach all the binaries, and published the docker image. See release [v1.0.2](https://github.com/Piszmog/go-htmx-template/releases/tag/v1.0.2) as an example.
 
