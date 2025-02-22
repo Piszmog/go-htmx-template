@@ -1,6 +1,6 @@
 # Go + HTMX Template
 
-This is a _opinionated_ template repository that comes with everything you need to build a Web Application using Go (with templ) and HTMX. 
+This is an _opinionated_ template repository that comes with everything you need to build a Web Application using Go (with templ) and HTMX. 
 
 The template comes with a basic structure of using a SQL DB (`sqlc`), E2E testing (playwright), and styling (tailwindcss).
 
