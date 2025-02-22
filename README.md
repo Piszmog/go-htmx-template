@@ -260,10 +260,5 @@ See the `Makefile` for building the application.
 ## Github Workflow
 
 The repository comes with two Github workflows as well. One called `ci.yml` that lints and 
-tests your code. The other called `release.yml` that creates a tag, GitHub Release, and 
-attaches the Linux binary to the Release.
+tests your code. The other called `release.yml` that creates a tag, GitHub Release, run [GoReleaser](https://goreleaser.com/) to build and attach all the binaries.
 
-### GoReleaser
-
-If you need to compile for more than Linux, see [GoReleaser](https://goreleaser.com/) for a 
-better release process.
