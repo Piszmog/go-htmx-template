@@ -21,11 +21,12 @@ go get -u
 go mod tidy
 ```
 
-Then you can proceed to generate sqlc and templ files
+Then you can proceed to generate sqlc, templ, and styling files
 
 ```shell
 go tool sqlc generate
 go tool templ generate -path ./components
+go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@dev.css
 ```
 
 ## Run
@@ -34,10 +35,9 @@ go tool templ generate -path ./components
 
 ### Prerequisites
 
-- Install [tailwindcss CLI](https://tailwindcss.com/docs/installation/tailwind-cli)
 - Install [air](https://github.com/air-verse/air#installation)
 
-`templ` and `sqlc` are included as `go tool` directives.
+`templ`, `sqlc`, and `tailwindcss` (via `go-tw`) are included as `go tool` directives.
 
 ### air
 
