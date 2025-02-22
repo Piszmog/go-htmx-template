@@ -41,7 +41,7 @@ When the application is running, go to http://localhost:8080/
 - Install [air](https://github.com/air-verse/air#installation)
 
 `templ`, `sqlc`, and `tailwindcss` (via [`go-tw`](https://github.com/Piszmog/go-tw)) are included as `go tool` directives. When running
-the application for the first time, it may a little take time as `templ`, `sqc` and `go-tw` are being downloaded and installed.
+the application for the first time, it may a little take time as `templ`, `sqlc` and `go-tw` are being downloaded and installed.
 
 ### air
 
