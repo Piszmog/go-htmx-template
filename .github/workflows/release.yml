@@ -19,14 +19,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-      - run: go mod download
-      - name: Generate Templ Files
-        run: go tool templ generate -path ./components
-      - name: Generate CSS
-        run: go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@${{ github.event.inputs.version }}.css --minify
-      - run: go tool sqlc generate
-      - name: Build Application
-        run: go build -o ./app -ldflags="-s -w -X version.Value=${{ github.event.inputs.version }}"
       - name: Create Tag
         uses: piszmog/create-tag@v1
         with:
