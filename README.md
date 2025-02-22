@@ -81,6 +81,14 @@ A few different technologies are configured to help getting off the ground easie
 
 ```text
 .
+├── .air.toml
+├── .github
+│   └── workflows
+│       ├── ci.yml
+│       └── release.yml
+├── .gitignore
+├── .goreleaser.yaml
+├── Dockerfile
 ├── components
 │   ├── core
 │   │   └── html.templ
