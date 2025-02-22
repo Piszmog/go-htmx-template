@@ -105,7 +105,7 @@ A few different technologies are configured to help getting off the ground easie
 ├── dist
 │   ├── assets
 │   │   └── js
-│   │       └── htmx@1.9.10.min.js
+│   │       └── htmx@2.0.4.min.js
 │   └── dist.go
 ├── e2e
 │   ├── e2e_test.go
