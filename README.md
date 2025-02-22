@@ -37,7 +37,7 @@ go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@dev.css
 
 - Install [air](https://github.com/air-verse/air#installation)
 
-`templ`, `sqlc`, and `tailwindcss` (via `go-tw`) are included as `go tool` directives.
+`templ`, `sqlc`, and `tailwindcss` (via [`go-tw`](https://github.com/Piszmog/go-tw)) are included as `go tool` directives.
 
 ### air
 
