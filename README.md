@@ -41,7 +41,7 @@ When the application is running, go to http://localhost:8080/
 - Install [air](https://github.com/air-verse/air#installation)
 
 `templ`, `sqlc`, and `tailwindcss` (via [`go-tw`](https://github.com/Piszmog/go-tw)) are included as `go tool` directives. When running
-the application for the first time, it may a little take time as `templ`, `sqc` and `go-tw` are being downloaded and installed.
+the application for the first time, it may take a little time as `templ`, `sqlc` and `go-tw` are being downloaded and installed.
 
 ### air
 
@@ -81,6 +81,14 @@ A few different technologies are configured to help getting off the ground easie
 
 ```text
 .
+├── .air.toml
+├── .github
+│   └── workflows
+│       ├── ci.yml
+│       └── release.yml
+├── .gitignore
+├── .goreleaser.yaml
+├── Dockerfile
 ├── components
 │   ├── core
 │   │   └── html.templ
@@ -97,7 +105,7 @@ A few different technologies are configured to help getting off the ground easie
 ├── dist
 │   ├── assets
 │   │   └── js
-│   │       └── htmx@1.9.10.min.js
+│   │       └── htmx@2.0.4.min.js
 │   └── dist.go
 ├── e2e
 │   ├── e2e_test.go
@@ -123,6 +131,8 @@ A few different technologies are configured to help getting off the ground easie
 ├── sqlc.yml
 ├── styles
 │   └── input.css
+├── update_module.sh
+├── upgrade_htmx.sh
 └── version
     └── version.go
 ```
@@ -255,10 +265,9 @@ This package allows you to set a version at build time. If not set, the version 
 go build -o ./app -ldflags="-X version.Value=1.0.0"
 ```
 
-See the `Makefile` for building the application.
-
 ## Github Workflow
 
 The repository comes with two Github workflows as well. One called `ci.yml` that lints and 
-tests your code. The other called `release.yml` that creates a tag, GitHub Release, run [GoReleaser](https://goreleaser.com/) to build and attach all the binaries.
+tests your code. The other called `release.yml` that creates a tag, GitHub Release, run [GoReleaser](https://goreleaser.com/) to build and 
+attach all the binaries, and published the docker image. See release [v1.0.2](https://github.com/Piszmog/go-htmx-template/releases/tag/v1.0.2) as an example.
 
