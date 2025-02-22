@@ -50,8 +50,8 @@ jobs:
       - run: go tool templ generate -path ./components
       - run: go tool sqlc generate
       - run: go test ./... -tags=e2e
-  docker-publish:
-    name: Publish Docker
+  docker:
+    name: Docker
     runs-on: ubuntu-latest
     permissions:
       contents: read
