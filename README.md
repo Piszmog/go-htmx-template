@@ -265,8 +265,6 @@ This package allows you to set a version at build time. If not set, the version 
 go build -o ./app -ldflags="-X version.Value=1.0.0"
 ```
 
-See the `Makefile` for building the application.
-
 ## Github Workflow
 
 The repository comes with two Github workflows as well. One called `ci.yml` that lints and 
