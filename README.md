@@ -131,6 +131,8 @@ A few different technologies are configured to help getting off the ground easie
 ├── sqlc.yml
 ├── styles
 │   └── input.css
+├── update_module.sh
+├── upgrade_htmx.sh
 └── version
     └── version.go
 ```
