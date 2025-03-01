@@ -17,7 +17,7 @@ RUN go mod download \
 RUN go build -ldflags="-s -w -X version.Value=${VERSION}" -o my-app
 
 ## Deploy
-FROM gcr.io/distroless/static-debian12
+FROM gcr.io/distroless/base-debian12
 
 WORKDIR /
 
