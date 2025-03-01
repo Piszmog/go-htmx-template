@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"go-htmx-template/db"
 	"go-htmx-template/log"
+	"go-htmx-template/otel"
 	"go-htmx-template/server"
 	"go-htmx-template/server/router"
 	"os"
@@ -16,6 +18,14 @@ func main() {
 		log.GetLevel(),
 		log.GetOutput(),
 	)
+
+	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	shutdown, err := otel.Init(context.Background(), otel.Config{Insecure: true, Endpoint: otelEndpoint, ServiceName: "my-app"})
+	if err != nil {
+		logger.Error("Failed to initialize OpenTelemetry", "error", err)
+		os.Exit(1)
+	}
+	defer shutdown(context.Background())
 
 	database, err := db.New(logger, "./db.sqlite3")
 	if err != nil {
