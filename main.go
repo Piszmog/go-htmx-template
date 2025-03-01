@@ -20,7 +20,12 @@ func main() {
 	)
 
 	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	otel.Init(context.Background(), otel.Config{Insecure: true, Endpoint: otelEndpoint, ServiceName: "my-app"})
+	shutdown, err := otel.Init(context.Background(), otel.Config{Insecure: true, Endpoint: otelEndpoint, ServiceName: "my-app"})
+	if err != nil {
+		logger.Error("Failed to initialize OpenTelemetry", "error", err)
+		os.Exit(1)
+	}
+	defer shutdown(context.Background())
 
 	database, err := db.New(logger, "./db.sqlite3")
 	if err != nil {
