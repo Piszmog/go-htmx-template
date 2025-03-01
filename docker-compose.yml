@@ -1,0 +1,17 @@
+---
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - otel-lgtm
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-lgtm:4317
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: otel-lgtm
+    ports:
+      - "3000:3000"
+      - "4317:4317"

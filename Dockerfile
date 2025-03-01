@@ -12,12 +12,11 @@ COPY ./ /app
 RUN go mod download \
     && go tool templ generate -path ./components \
     && go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@${VERSION}.css --minify \
-    && go tool sqlc generate
-
-RUN go build -ldflags="-s -w -X version.Value=${VERSION}" -o my-app
+    && go tool sqlc generate \
+    && go build -ldflags="-s -w -X version.Value=${VERSION}" -o my-app
 
 ## Deploy
-FROM gcr.io/distroless/static-debian12
+FROM gcr.io/distroless/base-debian12
 
 WORKDIR /
 

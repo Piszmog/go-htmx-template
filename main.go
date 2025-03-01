@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"go-htmx-template/db"
 	"go-htmx-template/log"
+	"go-htmx-template/otel"
 	"go-htmx-template/server"
 	"go-htmx-template/server/router"
 	"os"
@@ -16,6 +18,9 @@ func main() {
 		log.GetLevel(),
 		log.GetOutput(),
 	)
+
+	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	otel.Init(context.Background(), otel.Config{Insecure: true, Endpoint: otelEndpoint, ServiceName: "my-app"})
 
 	database, err := db.New(logger, "./db.sqlite3")
 	if err != nil {

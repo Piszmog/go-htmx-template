@@ -7,6 +7,8 @@ import (
 	"go-htmx-template/server/middleware"
 	"log/slog"
 	"net/http"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func New(logger *slog.Logger, database db.Database) http.Handler {
@@ -20,7 +22,11 @@ func New(logger *slog.Logger, database db.Database) http.Handler {
 	mux.Handle(newPath(http.MethodGet, "/assets/"), middleware.CacheMiddleware(http.FileServer(http.FS(dist.AssetsDir))))
 	mux.HandleFunc(newPath(http.MethodGet, "/"), h.Home)
 
-	return middleware.NewLoggingMiddleware(logger, mux)
+	loggingMiddleware := middleware.LoggingMiddleware{Logger: logger}
+	return middleware.Chain(
+		loggingMiddleware.ServeHTTP,
+		otelhttp.NewMiddleware("http-server"),
+	)(mux)
 }
 
 func newPath(method string, path string) string {
