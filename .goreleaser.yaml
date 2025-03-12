@@ -7,11 +7,13 @@ before:
     - go mod download
     - go tool sqlc generate
     - go tool templ generate -path ./components
-    - go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@dev.css --minify
+    - go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@{{.Version}}.css --minify
 
 builds:
   - env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/Piszmog/go-htmx-template/version.Value={{.Version}}
     goos:
       - linux
       - windows
