@@ -4,10 +4,10 @@ dist: goreleaser-dist
 
 before:
   hooks:
-    - go mod tidy
-    - go tool templ generate -path ./components
-    - go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@dev.css
+    - go mod download
     - go tool sqlc generate
+    - go tool templ generate -path ./components
+    - go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@dev.css --minify
 
 builds:
   - env:
