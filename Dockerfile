@@ -3,13 +3,12 @@ FROM golang:1.24 AS build
 
 ARG VERSION='dev'
 
-RUN apt-get update && apt-get install -y curl
-
 WORKDIR /app
 
 COPY ./ /app
 
-RUN go mod download \
+RUN apt-get update \
+    && go mod download \
     && go tool templ generate -path ./components \
     && go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@${VERSION}.css --minify \
     && go tool sqlc generate \
