@@ -22,7 +22,11 @@ func main() {
 		logger.Error("Failed to create database", "error", err)
 		os.Exit(1)
 	}
-	defer database.Close()
+	defer func() {
+		if cerr := database.Close(); cerr != nil {
+			logger.Error("failed to close the database", "error", cerr)
+		}
+	}()
 
 	if err = db.Migrate(database); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		logger.Error("failed to migrate database", "error", err)

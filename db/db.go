@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"embed"
+	"errors"
 	"fmt"
 	"go-htmx-template/db/queries"
 	"log/slog"
@@ -34,7 +35,7 @@ func New(logger *slog.Logger, url string) (Database, error) {
 }
 
 // Migrate runs the migrations on the database. Assumes the database is SQLite.
-func Migrate(db Database) error {
+func Migrate(db Database) (err error) {
 	driver, err := sqlite3.WithInstance(db.DB(), &sqlite3.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to create database driver: %w", err)
@@ -44,7 +45,11 @@ func Migrate(db Database) error {
 	if err != nil {
 		return fmt.Errorf("failed to create iofs: %w", err)
 	}
-	defer iofsDriver.Close()
+	defer func() {
+		if cerr := iofsDriver.Close(); cerr != nil {
+			err = errors.Join(err, fmt.Errorf("failed to close driver: %w", cerr))
+		}
+	}()
 
 	m, err := migrate.NewWithInstance("iofs", iofsDriver, "sqlite3", driver)
 	if err != nil {
