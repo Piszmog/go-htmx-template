@@ -19,12 +19,21 @@ jobs:
           go-version-file: 'go.mod'
       - run: go mod download
       - run: go tool templ generate -path ./components
-      - run: go tool sqlc vet
       - run: go tool sqlc generate
       - name: Lint
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.0
+  sql-lint:
+    name: SQL Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+      - run: go mod download
+      - run: go tool sqlc vet
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -58,6 +67,7 @@ jobs:
       packages: write
     needs:
       - lint
+      - sql-lint
       - test
       - e2e
     steps:
