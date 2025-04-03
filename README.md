@@ -19,8 +19,11 @@ Once ran, delete the script.
 Then you can upgrade your module dependencies with
 
 ```shell
-go get -u
 go mod tidy
+go get -u
+go get -u tool
+# To upgrade test dependencies, run
+go get -u all
 ```
 
 Finally, you can proceed to generate sqlc and templ files
