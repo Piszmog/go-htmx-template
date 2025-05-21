@@ -21,9 +21,9 @@ jobs:
       - run: go tool templ generate -path ./components
       - run: go tool sqlc generate
       - name: Lint
-        uses: golangci/golangci-lint-action@v7
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.0
+          version: v2.1
   sql-lint:
     name: SQL Lint
     runs-on: ubuntu-latest
