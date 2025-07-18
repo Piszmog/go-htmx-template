@@ -140,6 +140,10 @@ A few different technologies are configured to help getting off the ground easie
     └── version.go
 ```
 
+### Agents
+
+At the root of the project is the file `Agents.md`. It is designed to help agents better understand the project and help you in your development.
+
 ### Components
 
 This is where `templ` files live. Anything you want to render to the user goes here. Note, all
