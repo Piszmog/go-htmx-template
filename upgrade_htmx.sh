@@ -8,15 +8,15 @@ fi
 old_version=""
 new_version=$1
 
-for filename in "./dist/assets/js"/*; do
-	if [[ "$filename" == "./dist/assets/js/htmx"* ]]; then
+for filename in "./internal/dist/assets/js"/*; do
+	if [[ "$filename" == "./internal/dist/assets/js/htmx"* ]]; then
 		old_version=$(echo "$filename" | awk -F'@' '{gsub(/\.min\.js/, "", $2); print $2}')
 		break
 	fi
 done
 
-curl -sL -o "./dist/assets/js/htmx@${new_version}.min.js" "https://github.com/bigskysoftware/htmx/releases/download/${new_version}/htmx.min.js"
+curl -sL -o "./internal/dist/assets/js/htmx@${new_version}.min.js" "https://github.com/bigskysoftware/htmx/releases/download/${new_version}/htmx.min.js"
 
-sed -i '' -e "s/${old_version}/${new_version}/g" "./components/core/html.templ"
+sed -i '' -e "s/${old_version}/${new_version}/g" "./internal/components/core/html.templ"
 
-rm "./dist/assets/js/htmx@${old_version}.min.js"
+rm "./internal/dist/assets/js/htmx@${old_version}.min.js"

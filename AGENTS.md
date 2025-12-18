@@ -14,7 +14,7 @@
 - **Naming**: Use Go conventions (PascalCase for exported, camelCase for unexported)
 - **Error handling**: Always check errors, use `fmt.Errorf` with `%w` for wrapping
 - **Logging**: Use structured logging with `slog.Logger`, include context in error messages
-- **Interfaces**: Keep small and focused (e.g., `Database` interface in `db/db.go`)
+- **Interfaces**: Keep small and focused (e.g., `Database` interface in `internal/db/db.go`)
 - **Comments**: Document exported functions/types, use `//` for single line comments
 
 ## Templ Syntax
@@ -40,7 +40,7 @@
 - **Return types**: `:one` (single row), `:many` (slice), `:exec` (error only), `:execresult` (sql.Result)
 - **Parameters**: Use `?` for SQLite placeholders in queries
 - **Generated code**: Run `go tool sqlc generate` to create Go functions from SQL
-- **File structure**: Queries in `db/queries/`, migrations in `db/migrations/`, generated code in `db/queries/`
+- **File structure**: Queries in `internal/db/queries/`, migrations in `internal/db/migrations/`, generated code in `internal/db/queries/`
 - **Usage pattern**: `queries := db.New(sqlDB); result, err := queries.FunctionName(ctx, params)`
 
 ## Tailwind CSS
