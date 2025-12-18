@@ -91,5 +91,4 @@ func (s *Server) GracefulShutdown() {
 	// <-ctx.Done() if your application should wait for other services
 	// to finalize based on context cancellation.
 	s.logger.Info("shutting down")
-	os.Exit(0)
 }

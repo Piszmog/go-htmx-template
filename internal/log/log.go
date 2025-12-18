@@ -39,13 +39,13 @@ func (l Level) ToSlog() slog.Level {
 }
 
 const (
-	// LogDebug is the debug log level.
+	// LevelDebug is the debug log level.
 	LevelDebug Level = "debug"
-	// LogInfo is the info log level.
+	// LevelInfo is the info log level.
 	LevelInfo Level = "info"
-	// LogWarn is the warn log level.
+	// LevelWarn is the warn log level.
 	LevelWarn Level = "warn"
-	// LogError is the error log level.
+	// LevelError is the error log level.
 	LevelError Level = "error"
 )
 
