@@ -6,14 +6,15 @@ before:
   hooks:
     - go mod download
     - go tool sqlc generate
-    - go tool templ generate -path ./components
-    - go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@{{.Version}}.css --minify
+    - go tool templ generate -path ./internal/components
+    - go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@{{.Version}}.css --minify
 
 builds:
-  - env:
+  - main: ./cmd/server
+    env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X github.com/Piszmog/go-htmx-template/version.Value={{.Version}}
+      - -s -w -X github.com/Piszmog/go-htmx-template/internal/version.Value={{.Version}}
     goos:
       - linux
       - windows

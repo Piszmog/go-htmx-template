@@ -1,8 +1,8 @@
 package handler
 
 import (
-	"go-htmx-template/components/core"
-	"go-htmx-template/components/home"
+	"go-htmx-template/internal/components/core"
+	"go-htmx-template/internal/components/home"
 	"net/http"
 )
 

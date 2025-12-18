@@ -2,12 +2,12 @@
 
 ## Build/Test Commands
 - **Development**: `air` (live reload with templ/sqlc/tailwind generation)
-- **Build**: `go build -o ./tmp/main .`
+- **Build**: `go build -o ./tmp/main ./cmd/server`
 - **Test all**: `go test -v ./...`
 - **E2E tests**: `go test -v ./... -tags=e2e`
 - **Single test**: `go test -v ./path/to/package -run TestName`
-- **Generate**: `go tool templ generate -path ./components && go tool sqlc generate`
-- **CSS**: `go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@dev.css`
+- **Generate**: `go tool templ generate -path ./internal/components && go tool sqlc generate`
+- **CSS**: `go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css`
 
 ## Code Style
 - **Imports**: Standard library first, then third-party, then local packages
@@ -73,10 +73,21 @@
 - **Browser support**: Chromium (default), Firefox, WebKit via `BROWSER` env var
 
 ## Project Structure
-- `components/`: templ files (*.go files auto-generated, ignored by git)
-- `db/`: sqlc generated code and migrations
-- `server/`: HTTP handlers, middleware, routing
-- `e2e/`: End-to-end tests using Playwright
-- `dist/assets/`: Static assets (CSS auto-generated, ignored by git)
-- `log/`: Structured logging utilities
-- `version/`: Build-time version info (set via ldflags)
+- `cmd/server/`: Application entrypoint with main.go
+- `internal/`: All implementation packages (prevents external imports)
+  - `components/`: templ files (*.go files auto-generated, ignored by git)
+  - `db/`: sqlc generated code and migrations
+  - `server/`: HTTP handlers, middleware, routing
+  - `dist/`: Embedded static assets (CSS auto-generated, ignored by git)
+  - `log/`: Structured logging utilities
+  - `version/`: Build-time version info (set via ldflags)
+- `e2e/`: End-to-end tests using Playwright (external to app)
+- `styles/`: CSS source files (input for Tailwind)
+
+## Why `internal/` Package?
+All application code lives in `internal/` following Go's official server project layout:
+- Prevents external packages from importing implementation details
+- Signals this is a server application, not a reusable library
+- Follows [go.dev/doc/modules/layout](https://go.dev/doc/modules/layout) "Server project" pattern
+- `cmd/server/` contains the application entrypoint
+- Only `e2e/` (tests) and `styles/` (build inputs) stay at root

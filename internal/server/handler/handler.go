@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"github.com/a-h/templ"
-	"go-htmx-template/db"
+	"go-htmx-template/internal/db"
 	"log/slog"
 	"net/http"
 )

@@ -30,7 +30,7 @@ Finally, you can proceed to generate sqlc and templ files
 
 ```shell
 go tool sqlc generate
-go tool templ generate -path ./components
+go tool templ generate -path ./internal/components
 ```
 
 ## Run
@@ -86,80 +86,90 @@ A few different technologies are configured to help getting off the ground easie
 .
 ├── .air.toml
 ├── .github
-│   └── workflows
-│       ├── ci.yml
-│       └── release.yml
+│   └── workflows
+│       ├── ci.yml
+│       └── release.yml
 ├── .gitignore
 ├── .goreleaser.yaml
 ├── Dockerfile
-├── components
-│   ├── core
-│   │   └── html.templ
-│   └── home
-│       └── home.templ
-├── db
-│   ├── db.go
-│   ├── local.go
-│   ├── migrations
-│   │   ├── 20240407203525_init.down.sql
-│   │   └── 20240407203525_init.up.sql
-│   └── queries
-│       └── query.sql
-├── dist
-│   ├── assets
-│   │   └── js
-│   │       └── htmx@2.0.4.min.js
-│   └── dist.go
+├── cmd
+│   └── server
+│       └── main.go
+├── internal
+│   ├── components
+│   │   ├── core
+│   │   │   └── html.templ
+│   │   └── home
+│   │       └── home.templ
+│   ├── db
+│   │   ├── db.go
+│   │   ├── local.go
+│   │   ├── migrations
+│   │   │   ├── 20240407203525_init.down.sql
+│   │   │   └── 20240407203525_init.up.sql
+│   │   └── queries
+│   │       └── query.sql
+│   ├── dist
+│   │   ├── assets
+│   │   │   └── js
+│   │   │       └── htmx@2.0.4.min.js
+│   │   └── dist.go
+│   ├── log
+│   │   └── log.go
+│   ├── server
+│   │   ├── handler
+│   │   │   ├── handler.go
+│   │   │   └── home.go
+│   │   ├── middleware
+│   │   │   ├── cache.go
+│   │   │   ├── logging.go
+│   │   │   └── middleware.go
+│   │   ├── router
+│   │   │   └── router.go
+│   │   └── server.go
+│   └── version
+│       └── version.go
 ├── e2e
-│   ├── e2e_test.go
-│   ├── home_test.go
-│   └── testdata
-│       └── seed.sql
+│   ├── e2e_test.go
+│   ├── home_test.go
+│   └── testdata
+│       └── seed.sql
+├── styles
+│   └── input.css
 ├── go.mod
 ├── go.sum
-├── log
-│   └── log.go
-├── main.go
-├── server
-│   ├── handler
-│   │   ├── handler.go
-│   │   └── home.go
-│   ├── middleware
-│   │   ├── cache.go
-│   │   ├── logging.go
-│   │   └── middleware.go
-│   ├── router
-│   │   └── router.go
-│   └── server.go
 ├── sqlc.yml
-├── styles
-│   └── input.css
 ├── update_module.sh
-├── upgrade_htmx.sh
-└── version
-    └── version.go
+└── upgrade_htmx.sh
 ```
 
 ### Agents
 
-At the root of the project is the file `Agents.md`. It is designed to help agents better understand the project and help you in your development.
+At the root of the project is the file `AGENTS.md`. It is designed to help agents better understand the project and help you in your development.
+
+### cmd/
+
+This directory contains the application entrypoints. The `server/` subdirectory contains `main.go` which starts the HTTP server. This follows Go's standard project layout for applications.
+
+### internal/
+
+All application implementation code lives in the `internal/` directory. This prevents external packages from importing implementation details and follows the official Go project layout for server applications as documented at [go.dev/doc/modules/layout](https://go.dev/doc/modules/layout).
 
 ### Components
 
-This is where `templ` files live. Anything you want to render to the user goes here. Note, all
-`*.go` files will be ignored by `git` (configured in `.gitignore`).
+This is where `templ` files live in `internal/components/`. Anything you want to render to the user goes here. Note, all `*.go` files will be ignored by `git` (configured in `.gitignore`).
 
 ### DB
 
-This is the directory that `sqlc` generates to. Update `queries.sql` to build 
+This is the directory in `internal/db/` that `sqlc` generates to. Update `queries.sql` to build 
 your database operations.
 
 This project uses [golang migrate](https://github.com/golang-migrate/migrate) for DB 
-migrations. `sqlc` uses the `db/migrations` directory to generating DB tables. `main.go` calls `db.Migrate(..)` to automatically migrate the DB. To add migration
+migrations. `sqlc` uses the `internal/db/migrations` directory to generate DB tables. `cmd/server/main.go` calls `db.Migrate(..)` to automatically migrate the DB. To add migration
 call the following command,
 
 ```shell
-migrate create -ext sql -dir db/migrations <name of migration>
+migrate create -ext sql -dir internal/db/migrations <name of migration>
 ```
 
 #### Example Connection to Turso
@@ -173,7 +183,7 @@ import (
 	"database/sql"
 	"log/slog"
 
-	"go-htmx-template/db/queries"
+	"go-htmx-template/internal/db/queries"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
@@ -212,12 +222,12 @@ func newRemoteDB(logger *slog.Logger, name string, token string) (*RemoteDB, err
 
 ### Dist
 
-This is where your assets live. Any Javascript, images, or styling needs to go in the 
-`dist/assets` directory. The directory will be embedded into the application.
+This is where your assets live in `internal/dist/`. Any Javascript, images, or styling needs to go in the 
+`internal/dist/assets` directory. The directory will be embedded into the application.
 
-Note, the `dist/assets/css` will be ignored by `git` (configured in `.gitignore`) since the 
+Note, the `internal/dist/assets/css` will be ignored by `git` (configured in `.gitignore`) since the 
 files that are written to this directory are done by the Tailwind CSS CLI. Custom styles should
-go in the `styles/input.css` file.
+go in the `styles/input.css` file at the root level.
 
 ### E2E
 
@@ -241,35 +251,35 @@ with then environment variables `LOG_LEVEL` and `LOG_OUTPUT`. The logger will wr
 
 ### Server
 
-This contains everything related to the HTTP server. It comes with a graceful shutdown handler
+This contains everything related to the HTTP server in `internal/server/`. It comes with a graceful shutdown handler
 that handles `SIGINT`.
 
 #### Router
 
 This package sets up the routing for the application, such as the `/assets/` path and `/` path.
-It uses the standard libraries mux for routing. You can easily swap out for other HTTP 
+It uses the standard library's mux for routing. You can easily swap out for other HTTP 
 routers such as [gorilla/mux](https://github.com/gorilla/mux).
 
 #### Middleware
 
-This package contains any middleware to configured with routes.
+This package contains any middleware to be configured with routes.
 
 #### Handler
 
-This package contains the handler to handle the actual routes.
+This package contains the handlers to handle the actual routes.
 
-#### Styles
+### Styles
 
-This contains the `input.css` that the Tailwind CSS CLI uses to generate your output CSS. 
+This contains the `input.css` at the root level that the Tailwind CSS CLI uses to generate your output CSS. 
 Update `input.css` with any custom CSS you need and it will be included in the output CSS.
 
-#### Version
+### Version
 
-This package allows you to set a version at build time. If not set, the version defaults to 
+This package in `internal/version/` allows you to set a version at build time. If not set, the version defaults to 
 `dev`. To set the version run the following command,
 
 ```shell
-go build -o ./app -ldflags="-X version.Value=1.0.0"
+go build -o ./app -ldflags="-X go-htmx-template/internal/version.Value=1.0.0" ./cmd/server
 ```
 
 ## Github Workflow

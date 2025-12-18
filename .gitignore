@@ -25,11 +25,11 @@ go.work
 # Google App Engine generated folder
 appengine-generated/
 
-/components/*/*.go
-/components/*/*.txt
+/internal/components/*/*.go
+/internal/components/*/*.txt
 .idea
 *.iml
-dist/assets/css/
+internal/dist/assets/css/
 *.sqlite3
 tmp/
 pb_data/
@@ -60,5 +60,5 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-/db/queries/*.go
+/internal/db/queries/*.go
 goreleaser-dist
