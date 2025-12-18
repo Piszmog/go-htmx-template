@@ -14,7 +14,7 @@ builds:
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X github.com/Piszmog/go-htmx-template/internal/version.Value={{.Version}}
+      - -s -w -X go-htmx-template/internal/version.Value={{.Version}}
     goos:
       - linux
       - windows

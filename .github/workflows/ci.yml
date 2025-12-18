@@ -104,7 +104,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/piszmog/go-htmx-template
+          images: ghcr.io/${{ github.repository }}
       - uses: docker/build-push-action@v5
         with:
           push: ${{ github.ref == 'refs/heads/main' }}

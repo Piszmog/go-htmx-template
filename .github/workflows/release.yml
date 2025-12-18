@@ -59,7 +59,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/piszmog/my-app
+          images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=${{ github.event.inputs.version }}
       - uses: docker/build-push-action@v5
