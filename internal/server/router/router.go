@@ -1,10 +1,10 @@
 package router
 
 import (
-	"go-htmx-template/db"
-	"go-htmx-template/dist"
-	"go-htmx-template/server/handler"
-	"go-htmx-template/server/middleware"
+	"go-htmx-template/internal/db"
+	"go-htmx-template/internal/dist"
+	"go-htmx-template/internal/server/handler"
+	"go-htmx-template/internal/server/middleware"
 	"log/slog"
 	"net/http"
 )

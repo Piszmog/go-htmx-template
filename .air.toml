@@ -5,10 +5,10 @@ tmp_dir = "tmp"
 [build]
   args_bin = []
   bin = "./tmp/main"
-  cmd = "go build -o ./tmp/main ."
+  cmd = "go build -o ./tmp/main ./cmd/server"
   delay = 1000
-  exclude_dir = ["dist/assets", "tmp", "vendor", "testdata"]
-  exclude_file = ["components/**/*.go", "db/queries/*.go", "dist/assets/css/output@dev.css"]
+  exclude_dir = ["internal/dist/assets", "tmp", "vendor", "testdata"]
+  exclude_file = ["internal/components/**/*.go", "internal/db/queries/*.go", "internal/dist/assets/css/output@dev.css"]
   exclude_regex = ["_test.go"]
   exclude_unchanged = true
   follow_symlink = false
@@ -26,8 +26,8 @@ tmp_dir = "tmp"
   ]
   pre_cmd = [
     "lsof -i :8080 -sTCP:LISTEN | sed 1d | awk '{print $2}' | xargs kill -9",
-    "go tool templ generate -path ./components",
-    "go tool go-tw -i ./styles/input.css -o ./dist/assets/css/output@dev.css",
+    "go tool templ generate -path ./internal/components",
+    "go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css",
     "go tool sqlc generate",
   ]
   rerun = true

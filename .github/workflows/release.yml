@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Create Tag
         uses: piszmog/create-tag@v1
         with:
@@ -27,10 +27,10 @@ jobs:
     needs: [ tag ]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
       - name: Run GoReleaser
@@ -50,7 +50,7 @@ jobs:
     needs:
       - release
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -59,7 +59,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/piszmog/my-app
+          images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=${{ github.event.inputs.version }}
       - uses: docker/build-push-action@v5

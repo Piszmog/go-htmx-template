@@ -1,11 +1,12 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
-	"go-htmx-template/db/queries"
+	"go-htmx-template/internal/db/queries"
 	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -28,7 +29,7 @@ func New(logger *slog.Logger, url string) (Database, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = db.db.Ping(); err != nil {
+	if err = db.DB().PingContext(context.Background()); err != nil {
 		return nil, err
 	}
 	return db, nil
