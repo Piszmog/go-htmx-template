@@ -1,21 +1,89 @@
 # AGENTS.md - Development Guidelines
 
-## Build/Test Commands
-- **Development**: `air` (live reload with templ/sqlc/tailwind generation)
-- **Build**: `go build -o ./tmp/main ./cmd/server`
-- **Test all**: `go test -v ./...`
-- **E2E tests**: `go test -v ./... -tags=e2e`
-- **Single test**: `go test -v ./path/to/package -run TestName`
-- **Generate**: `go tool templ generate -path ./internal/components && go tool sqlc generate`
-- **CSS**: `go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css`
+This file contains comprehensive guidelines for AI coding agents working in this Go + HTMX template repository.
 
-## Code Style
-- **Imports**: Standard library first, then third-party, then local packages
-- **Naming**: Use Go conventions (PascalCase for exported, camelCase for unexported)
-- **Error handling**: Always check errors, use `fmt.Errorf` with `%w` for wrapping
-- **Logging**: Use structured logging with `slog.Logger`, include context in error messages
-- **Interfaces**: Keep small and focused (e.g., `Database` interface in `internal/db/db.go`)
-- **Comments**: Document exported functions/types, use `//` for single line comments
+## Build/Test/Lint Commands
+
+### Development
+- **Run with live reload**: `air` (auto-generates templ, sqlc, tailwind CSS on file changes)
+- **Manual build**: `go build -o ./tmp/main ./cmd/server`
+- **Run without air**: `go run ./cmd/server`
+
+### Testing
+- **All tests**: `go test -v ./...`
+- **With race detector**: `go test -race ./...`
+- **Single package**: `go test -v ./internal/server/handler`
+- **Single test**: `go test -v ./internal/server/handler -run TestHome`
+- **E2E tests only**: `go test -v ./... -tags=e2e`
+- **E2E single test**: `go test -v ./e2e -tags=e2e -run TestHomePage`
+- **Headful E2E** (see browser): `HEADFUL=1 go test -v ./e2e -tags=e2e`
+- **Different browser**: `BROWSER=firefox go test -v ./e2e -tags=e2e` (chromium, firefox, webkit)
+
+### Linting
+- **Lint all**: `golangci-lint run`
+- **Lint with fixes**: `golangci-lint run --fix`
+- **SQL lint**: `go tool sqlc vet`
+
+### Code Generation
+- **Generate all**: `go tool templ generate -path ./internal/components && go tool sqlc generate`
+- **Templ only**: `go tool templ generate -path ./internal/components`
+- **SQLC only**: `go tool sqlc generate`
+- **Tailwind CSS**: `go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css`
+
+### Database Migrations
+- **Create migration**: `migrate create -ext sql -dir internal/db/migrations <name>`
+- **Migration files**: Creates two files: `<timestamp>_<name>.up.sql` and `<timestamp>_<name>.down.sql`
+- **Up migrations**: Write schema changes in `.up.sql` (e.g., `CREATE TABLE`, `ALTER TABLE`)
+- **Down migrations**: Write rollback logic in `.down.sql` (e.g., `DROP TABLE`)
+- **Auto-run**: Migrations run automatically on app startup via `db.Migrate()` in `cmd/server/main.go`
+- **Manual run**: Not typically needed (app handles it), but available via golang-migrate CLI if needed
+- **Migration naming**: Use descriptive names (e.g., `add_users_table`, `add_email_to_authors`)
+
+### Dependencies
+- **Update all**: `go get -u ./...`
+- **Tidy**: `go mod tidy`
+- **Update tools**: `go get -u tool`
+
+## Code Style & Conventions
+
+### Imports
+- **Order**: Standard library first, blank line, third-party packages, blank line, local packages
+- **Example**:
+  ```go
+  import (
+      "context"
+      "fmt"
+      "net/http"
+
+      "github.com/a-h/templ"
+
+      "go-htmx-template/internal/db"
+      "go-htmx-template/internal/log"
+  )
+  ```
+
+### Naming
+- **Exported**: PascalCase (e.g., `Handler`, `Database`, `NewLogger`)
+- **Unexported**: camelCase (e.g., `defaultHandler`, `getPort`)
+- **Acronyms**: Use uppercase for exported (e.g., `HTML`, `DB`, `URL`), lowercase for unexported (e.g., `db`, `url`)
+- **Interfaces**: Name after what they do (e.g., `Database`) or add `-er` suffix (e.g., `Handler`)
+
+### Error Handling
+- **Always check errors**: Never ignore error return values
+- **Wrap errors**: Use `fmt.Errorf` with `%w` for error context: `fmt.Errorf("failed to query: %w", err)`
+- **Join errors**: Use `errors.Join(err1, err2)` for multiple errors (see `internal/db/db.go:51`)
+- **Log then return**: Log errors with context before returning: `h.Logger.Error("msg", "error", err)`
+
+### Logging
+- **Use structured logging**: `slog.Logger` with key-value pairs
+- **Example**: `logger.Info("server started", "port", port, "env", env)`
+- **Error logs**: `logger.Error("operation failed", "error", err, "context", value)`
+- **Inject logger**: Pass `*slog.Logger` to structs via dependency injection (see `internal/server/handler/handler.go:13`)
+
+### Comments
+- **Document exports**: All exported functions, types, methods need doc comments
+- **Format**: Start with the name: `// Handler handles requests.`
+- **Single line**: Use `//` for all comments (avoid `/* */` except for package docs)
 
 ## Templ Syntax
 - **Components**: `templ ComponentName(params) { <html>content</html> }`
