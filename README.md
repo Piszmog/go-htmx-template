@@ -20,7 +20,7 @@ Then you can upgrade your module dependencies with
 
 ```shell
 go mod tidy
-go get -u
+go get -u ./...
 go get -u tool
 # To upgrade test dependencies, run
 go get -u all
