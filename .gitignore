@@ -33,6 +33,7 @@ internal/dist/assets/css/
 *.sqlite3
 tmp/
 pb_data/
+.env
 
 # General
 .DS_Store
