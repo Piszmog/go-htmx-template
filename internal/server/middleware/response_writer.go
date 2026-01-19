@@ -15,7 +15,7 @@ type responseWriter struct {
 func newResponseWriter(w http.ResponseWriter) *responseWriter {
 	return &responseWriter{
 		ResponseWriter: w,
-		statusCode:     http.StatusOK, // Default status code
+		statusCode:     http.StatusOK,
 		bytesWritten:   0,
 		wroteHeader:    false,
 	}

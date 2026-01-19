@@ -12,75 +12,94 @@ import (
 	"go-htmx-template/internal/server/middleware"
 )
 
-func TestRecovery_PanicCaught(t *testing.T) {
+func TestRecovery_PanicHandling(t *testing.T) {
 	t.Parallel()
-	var logBuffer bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		panic("test panic")
-	})
+	tests := []struct {
+		name                 string
+		panicValue           interface{}
+		method               string
+		path                 string
+		expectedStatus       int
+		expectedBodyContains string
+		expectedLogContains  []string
+	}{
+		{
+			name:                 "recovers from string panic",
+			panicValue:           "test panic",
+			method:               http.MethodGet,
+			path:                 "/test",
+			expectedStatus:       http.StatusInternalServerError,
+			expectedBodyContains: "500 Internal Server Error",
+			expectedLogContains:  []string{"panic recovered", "test panic"},
+		},
+		{
+			name:                 "returns 500 status on panic",
+			panicValue:           "test panic",
+			method:               http.MethodGet,
+			path:                 "/test",
+			expectedStatus:       http.StatusInternalServerError,
+			expectedBodyContains: "500 Internal Server Error",
+			expectedLogContains:  []string{"panic recovered"},
+		},
+		{
+			name:                 "logs panic details with stack trace",
+			panicValue:           "something went wrong",
+			method:               http.MethodPost,
+			path:                 "/api/test",
+			expectedStatus:       http.StatusInternalServerError,
+			expectedBodyContains: "500 Internal Server Error",
+			expectedLogContains: []string{
+				"panic recovered",
+				"something went wrong",
+				"method=POST",
+				"path=/api/test",
+				"stack=",
+			},
+		},
+		{
+			name:                 "recovers from error panic",
+			panicValue:           assert.AnError,
+			method:               http.MethodGet,
+			path:                 "/test",
+			expectedStatus:       http.StatusInternalServerError,
+			expectedBodyContains: "500 Internal Server Error",
+			expectedLogContains:  []string{"panic recovered", assert.AnError.Error()},
+		},
+	}
 
-	mw := middleware.Recovery(logger)(handler)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	rec := httptest.NewRecorder()
+			var logBuffer bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
+				Level: slog.LevelDebug,
+			}))
 
-	// Should not panic, should handle gracefully
-	assert.NotPanics(t, func() {
-		mw.ServeHTTP(rec, req)
-	})
-}
+			handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				panic(tt.panicValue)
+			})
 
-func TestRecovery_Returns500(t *testing.T) {
-	t.Parallel()
-	var logBuffer bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
+			mw := middleware.Recovery(logger)(handler)
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		panic("test panic")
-	})
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			rec := httptest.NewRecorder()
 
-	mw := middleware.Recovery(logger)(handler)
+			// Should not panic, should handle gracefully
+			assert.NotPanics(t, func() {
+				mw.ServeHTTP(rec, req)
+			})
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	rec := httptest.NewRecorder()
+			assert.Equal(t, tt.expectedStatus, rec.Code)
+			assert.Contains(t, rec.Body.String(), tt.expectedBodyContains)
 
-	mw.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-	assert.Contains(t, rec.Body.String(), "500 Internal Server Error")
-}
-
-func TestRecovery_LogsPanic(t *testing.T) {
-	t.Parallel()
-	var logBuffer bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-
-	panicMessage := "something went wrong"
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		panic(panicMessage)
-	})
-
-	mw := middleware.Recovery(logger)(handler)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
-	rec := httptest.NewRecorder()
-
-	mw.ServeHTTP(rec, req)
-
-	logOutput := logBuffer.String()
-	assert.Contains(t, logOutput, "panic recovered")
-	assert.Contains(t, logOutput, panicMessage)
-	assert.Contains(t, logOutput, "method=POST")
-	assert.Contains(t, logOutput, "path=/api/test")
-	assert.Contains(t, logOutput, "stack=") // Stack trace logged
+			logOutput := logBuffer.String()
+			for _, logField := range tt.expectedLogContains {
+				assert.Contains(t, logOutput, logField)
+			}
+		})
+	}
 }
 
 func TestRecovery_NoPanic(t *testing.T) {
@@ -164,30 +183,4 @@ func TestRecovery_PanicWithNilValue(t *testing.T) {
 
 	// Note: panic(nil) doesn't actually trigger defer recover in Go
 	// But we test it doesn't cause issues
-}
-
-func TestRecovery_PanicWithError(t *testing.T) {
-	t.Parallel()
-	var logBuffer bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-
-	testError := assert.AnError
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		panic(testError)
-	})
-
-	mw := middleware.Recovery(logger)(handler)
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	rec := httptest.NewRecorder()
-
-	mw.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-
-	logOutput := logBuffer.String()
-	assert.Contains(t, logOutput, "panic recovered")
-	assert.Contains(t, logOutput, testError.Error())
 }

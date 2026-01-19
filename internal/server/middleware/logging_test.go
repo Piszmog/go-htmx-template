@@ -13,133 +13,121 @@ import (
 	"go-htmx-template/internal/server/middleware"
 )
 
-func TestLogging_CapturesStatusCode(t *testing.T) {
+func TestLogging_Middleware(t *testing.T) {
 	t.Parallel()
-	var logBuffer bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusCreated)
-		_, _ = w.Write([]byte("created"))
-	})
+	tests := []struct {
+		name              string
+		handler           http.HandlerFunc
+		method            string
+		path              string
+		remoteAddr        string
+		expectedStatus    int
+		expectedBody      string
+		expectedLogFields []string
+	}{
+		{
+			name: "captures custom status code",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusCreated)
+				_, _ = w.Write([]byte("created"))
+			},
+			method:            http.MethodPost,
+			path:              "/test",
+			remoteAddr:        "",
+			expectedStatus:    http.StatusCreated,
+			expectedBody:      "created",
+			expectedLogFields: []string{"status=201"},
+		},
+		{
+			name: "captures bytes written",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte("test response body"))
+			},
+			method:            http.MethodGet,
+			path:              "/test",
+			remoteAddr:        "",
+			expectedStatus:    http.StatusOK,
+			expectedBody:      "test response body",
+			expectedLogFields: []string{"bytes=18"},
+		},
+		{
+			name: "defaults to status 200 when not set",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				// Don't call WriteHeader, should default to 200
+				_, _ = w.Write([]byte("ok"))
+			},
+			method:            http.MethodGet,
+			path:              "/test",
+			remoteAddr:        "",
+			expectedStatus:    http.StatusOK,
+			expectedBody:      "ok",
+			expectedLogFields: []string{"status=200"},
+		},
+		{
+			name: "accumulates bytes from multiple writes",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte("Hello "))
+				_, _ = w.Write([]byte("World"))
+			},
+			method:            http.MethodGet,
+			path:              "/test",
+			remoteAddr:        "",
+			expectedStatus:    http.StatusOK,
+			expectedBody:      "Hello World",
+			expectedLogFields: []string{"bytes=11"},
+		},
+		{
+			name: "logs all request fields",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte("response"))
+			},
+			method:         http.MethodPost,
+			path:           "/api/users",
+			remoteAddr:     "192.168.1.1:12345",
+			expectedStatus: http.StatusOK,
+			expectedBody:   "response",
+			expectedLogFields: []string{
+				"Handled request",
+				"method=POST",
+				"path=/api/users",
+				"remote=192.168.1.1:12345",
+				"status=200",
+				"bytes=8",
+				"duration=",
+			},
+		},
+	}
 
-	mw := middleware.Logging(logger)(handler)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	req := httptest.NewRequest(http.MethodPost, "/test", nil)
-	rec := httptest.NewRecorder()
+			var logBuffer bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
+				Level: slog.LevelDebug,
+			}))
 
-	mw.ServeHTTP(rec, req)
+			mw := middleware.Logging(logger)(tt.handler)
 
-	assert.Equal(t, http.StatusCreated, rec.Code)
-	logOutput := logBuffer.String()
-	assert.Contains(t, logOutput, "status=201")
-}
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			if tt.remoteAddr != "" {
+				req.RemoteAddr = tt.remoteAddr
+			}
+			rec := httptest.NewRecorder()
 
-func TestLogging_CapturesBytesWritten(t *testing.T) {
-	t.Parallel()
-	var logBuffer bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
+			mw.ServeHTTP(rec, req)
 
-	testBody := "test response body"
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(testBody))
-	})
+			assert.Equal(t, tt.expectedStatus, rec.Code)
+			assert.Equal(t, tt.expectedBody, rec.Body.String())
 
-	mw := middleware.Logging(logger)(handler)
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	rec := httptest.NewRecorder()
-
-	mw.ServeHTTP(rec, req)
-
-	assert.Equal(t, testBody, rec.Body.String())
-	logOutput := logBuffer.String()
-	assert.Contains(t, logOutput, "bytes=18")
-}
-
-func TestLogging_DefaultStatus200(t *testing.T) {
-	t.Parallel()
-	var logBuffer bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Don't call WriteHeader, should default to 200
-		_, _ = w.Write([]byte("ok"))
-	})
-
-	mw := middleware.Logging(logger)(handler)
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	rec := httptest.NewRecorder()
-
-	mw.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	logOutput := logBuffer.String()
-	assert.Contains(t, logOutput, "status=200")
-}
-
-func TestLogging_MultipleWrites(t *testing.T) {
-	t.Parallel()
-	var logBuffer bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("Hello "))
-		_, _ = w.Write([]byte("World"))
-	})
-
-	mw := middleware.Logging(logger)(handler)
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	rec := httptest.NewRecorder()
-
-	mw.ServeHTTP(rec, req)
-
-	assert.Equal(t, "Hello World", rec.Body.String())
-	logOutput := logBuffer.String()
-	// Total bytes: 6 + 5 = 11
-	assert.Contains(t, logOutput, "bytes=11")
-}
-
-func TestLogging_AllFields(t *testing.T) {
-	t.Parallel()
-	var logBuffer bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("response"))
-	})
-
-	mw := middleware.Logging(logger)(handler)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/users", nil)
-	req.RemoteAddr = "192.168.1.1:12345"
-	rec := httptest.NewRecorder()
-
-	mw.ServeHTTP(rec, req)
-
-	logOutput := logBuffer.String()
-
-	// Verify all expected log fields are present
-	assert.Contains(t, logOutput, "Handled request")
-	assert.Contains(t, logOutput, "method=POST")
-	assert.Contains(t, logOutput, "path=/api/users")
-	assert.Contains(t, logOutput, "remote=192.168.1.1:12345")
-	assert.Contains(t, logOutput, "status=200")
-	assert.Contains(t, logOutput, "bytes=8")
-	assert.Contains(t, logOutput, "duration=")
+			logOutput := logBuffer.String()
+			for _, field := range tt.expectedLogFields {
+				assert.Contains(t, logOutput, field)
+			}
+		})
+	}
 }
 
 func TestLogging_NoLogWhenNotDebugLevel(t *testing.T) {
