@@ -13,6 +13,9 @@ on:
         default: patch
 permissions:
   contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
 jobs:
   calculate-version:
     name: Calculate Version

@@ -6,29 +6,22 @@ import (
 	"time"
 )
 
-// LoggingMiddleware represents a logging middleware.
-type LoggingMiddleware struct {
-	logger  *slog.Logger
-	handler http.Handler
-}
-
-// NewLoggingMiddleware creates a new logging middleware with the given logger and handler.
-func NewLoggingMiddleware(logger *slog.Logger, handler http.Handler) *LoggingMiddleware {
-	return &LoggingMiddleware{
-		logger:  logger,
-		handler: handler,
+// Logging returns a middleware handler that logs requests.
+func Logging(logger *slog.Logger) Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			rw := newResponseWriter(w)
+			next.ServeHTTP(rw, r)
+			logger.Debug(
+				"Handled request",
+				slog.String("method", r.Method),
+				slog.String("path", r.URL.Path),
+				slog.String("remote", r.RemoteAddr),
+				slog.Int("status", rw.statusCode),
+				slog.Int("bytes", rw.bytesWritten),
+				slog.Duration("duration", time.Since(start)),
+			)
+		})
 	}
-}
-
-// ServeHTTP logs the request and calls the next handler.
-func (l *LoggingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	start := time.Now()
-	l.handler.ServeHTTP(w, r)
-	l.logger.Debug(
-		"Handled request",
-		slog.String("method", r.Method),
-		slog.String("path", r.URL.Path),
-		slog.String("remote", r.RemoteAddr),
-		slog.Duration("duration", time.Since(start)),
-	)
 }

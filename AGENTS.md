@@ -85,6 +85,26 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **Format**: Start with the name: `// Handler handles requests.`
 - **Single line**: Use `//` for all comments (avoid `/* */` except for package docs)
 
+### Interface Implementation
+- **Compile-time checks**: Always add compile-time interface checks for structs that implement interfaces
+- **Format**: `var _ InterfaceName = (*StructName)(nil)` or `var _ InterfaceName = StructName{}` (for value receivers)
+- **Placement**: Place the check immediately after the struct definition, before constructor functions
+- **Example**:
+  ```go
+  type responseWriter struct {
+      http.ResponseWriter
+      statusCode int
+  }
+  
+  // Compile-time check to ensure responseWriter implements http.ResponseWriter.
+  var _ http.ResponseWriter = (*responseWriter)(nil)
+  
+  func newResponseWriter(w http.ResponseWriter) *responseWriter {
+      // ...
+  }
+  ```
+- **Purpose**: Catches interface compliance issues at build time rather than runtime
+
 ## Templ Syntax
 - **Components**: `templ ComponentName(params) { <html>content</html> }`
 - **Expressions**: Use `{ variable }` for interpolation, `{ function() }` for function calls

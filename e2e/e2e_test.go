@@ -6,11 +6,14 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -87,7 +90,11 @@ func beforeAll() {
 	if err = startApp(); err != nil {
 		log.Fatalf("could not start app: %v", err)
 	}
-	time.Sleep(time.Second * 5)
+
+	if err = waitForHealthCheck(baseUrL.String()); err != nil {
+		log.Fatalf("app failed health check: %v", err)
+	}
+
 	if err = seedDB(); err != nil {
 		log.Fatalf("could not seed db: %v", err)
 	}
@@ -152,6 +159,49 @@ func startApp() error {
 		}
 	}()
 	return nil
+}
+
+// waitForHealthCheck polls the /health endpoint until it responds successfully.
+// Returns nil on success, error on timeout or other failure.
+func waitForHealthCheck(baseURL string) error {
+	healthURL := baseURL + "/health"
+	timeout := time.After(10 * time.Second)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	client := &http.Client{
+		Timeout: 500 * time.Millisecond, // Each request times out after 500ms
+	}
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("health check timeout: app did not become ready within 10s")
+		case <-ticker.C:
+			resp, err := client.Get(healthURL)
+			if err != nil {
+				// Network error or app not ready, continue polling
+				continue
+			}
+
+			if resp.StatusCode == http.StatusOK {
+				body, err := io.ReadAll(resp.Body)
+				resp.Body.Close()
+				if err != nil {
+					continue
+				}
+
+				// Verify expected response (contains "version" field with JSON)
+				bodyStr := string(body)
+				if strings.Contains(bodyStr, `"version"`) && strings.Contains(bodyStr, `"dev"`) {
+					fmt.Println("✓ App health check passed")
+					return nil
+				}
+			} else {
+				resp.Body.Close()
+			}
+		}
+	}
 }
 
 func seedDB() error {

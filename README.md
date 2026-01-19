@@ -39,6 +39,38 @@ go tool templ generate -path ./internal/components
 
 When the application is running, go to http://localhost:8080/
 
+## Environment Variables
+
+The application can be configured using environment variables. For local development, copy `.env.example` to `.env` and customize as needed.
+
+### Available Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8080` | HTTP server port |
+| `LOG_LEVEL` | `info` | Logging level: `debug`, `info`, `warn`, `error` |
+| `LOG_OUTPUT` | `text` | Log format: `text` or `json` |
+| `DB_URL` | `./db.sqlite3` | Path to SQLite database file |
+
+### Example
+
+```bash
+# .env
+PORT=3000
+LOG_LEVEL=debug
+DB_URL=/data/myapp.db
+```
+
+## Endpoints
+
+### Health Check
+
+The application provides a basic health check endpoint:
+
+- **GET /health** - Returns `200 OK` with `{"version":"dev"}`
+
+This endpoint is suitable for basic liveness checks from load balancers or monitoring systems.
+
 ### Prerequisites
 
 - Install [air](https://github.com/air-verse/air#installation)

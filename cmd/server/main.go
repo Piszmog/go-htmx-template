@@ -17,7 +17,11 @@ func main() {
 		log.GetOutput(),
 	)
 
-	database, err := db.New(logger, "./db.sqlite3")
+	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		dbURL = "./db.sqlite3"
+	}
+	database, err := db.New(logger, dbURL)
 	if err != nil {
 		logger.Error("Failed to create database", "error", err)
 		os.Exit(1)
