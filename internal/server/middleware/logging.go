@@ -12,7 +12,7 @@ func Logging(logger *slog.Logger) Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			rw := newResponseWriter(w)
-			next.ServeHTTP(w, r)
+			next.ServeHTTP(rw, r)
 			logger.Debug(
 				"Handled request",
 				slog.String("method", r.Method),
