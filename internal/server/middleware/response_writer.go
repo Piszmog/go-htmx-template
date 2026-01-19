@@ -11,6 +11,8 @@ type responseWriter struct {
 	wroteHeader  bool
 }
 
+var _ http.ResponseWriter = (*responseWriter)(nil)
+
 // newResponseWriter creates a new responseWriter.
 func newResponseWriter(w http.ResponseWriter) *responseWriter {
 	return &responseWriter{
