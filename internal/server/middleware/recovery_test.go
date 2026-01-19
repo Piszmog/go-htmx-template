@@ -17,7 +17,7 @@ func TestRecovery_PanicHandling(t *testing.T) {
 
 	tests := []struct {
 		name                 string
-		panicValue           interface{}
+		panicValue           any
 		method               string
 		path                 string
 		expectedStatus       int

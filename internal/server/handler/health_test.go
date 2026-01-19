@@ -23,18 +23,21 @@ func TestHealth(t *testing.T) {
 		{
 			name: "returns 200 status code",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				t.Helper()
 				assert.Equal(t, http.StatusOK, rec.Code)
 			},
 		},
 		{
 			name: "returns JSON content type",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				t.Helper()
 				assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 			},
 		},
 		{
 			name: "returns correct JSON body",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				t.Helper()
 				body, err := io.ReadAll(rec.Body)
 				require.NoError(t, err)
 				assert.JSONEq(t, `{"version":"dev"}`, string(body))
@@ -43,6 +46,7 @@ func TestHealth(t *testing.T) {
 		{
 			name: "returns valid JSON structure with version field",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
+				t.Helper()
 				var result map[string]string
 				err := json.NewDecoder(rec.Body).Decode(&result)
 				require.NoError(t, err)
