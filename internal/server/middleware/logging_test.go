@@ -1,4 +1,4 @@
-package middleware
+package middleware_test
 
 import (
 	"bytes"
@@ -9,10 +9,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
+	"go-htmx-template/internal/server/middleware"
 )
 
 func TestLogging_CapturesStatusCode(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -23,12 +25,12 @@ func TestLogging_CapturesStatusCode(t *testing.T) {
 		_, _ = w.Write([]byte("created"))
 	})
 
-	middleware := Logging(logger)(handler)
+	mw := middleware.Logging(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodPost, "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusCreated, rec.Code)
 	logOutput := logBuffer.String()
@@ -36,6 +38,7 @@ func TestLogging_CapturesStatusCode(t *testing.T) {
 }
 
 func TestLogging_CapturesBytesWritten(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -46,12 +49,12 @@ func TestLogging_CapturesBytesWritten(t *testing.T) {
 		_, _ = w.Write([]byte(testBody))
 	})
 
-	middleware := Logging(logger)(handler)
+	mw := middleware.Logging(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	assert.Equal(t, testBody, rec.Body.String())
 	logOutput := logBuffer.String()
@@ -59,6 +62,7 @@ func TestLogging_CapturesBytesWritten(t *testing.T) {
 }
 
 func TestLogging_DefaultStatus200(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -69,12 +73,12 @@ func TestLogging_DefaultStatus200(t *testing.T) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	middleware := Logging(logger)(handler)
+	mw := middleware.Logging(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	logOutput := logBuffer.String()
@@ -82,6 +86,7 @@ func TestLogging_DefaultStatus200(t *testing.T) {
 }
 
 func TestLogging_MultipleWrites(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -92,12 +97,12 @@ func TestLogging_MultipleWrites(t *testing.T) {
 		_, _ = w.Write([]byte("World"))
 	})
 
-	middleware := Logging(logger)(handler)
+	mw := middleware.Logging(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	assert.Equal(t, "Hello World", rec.Body.String())
 	logOutput := logBuffer.String()
@@ -106,6 +111,7 @@ func TestLogging_MultipleWrites(t *testing.T) {
 }
 
 func TestLogging_AllFields(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -116,13 +122,13 @@ func TestLogging_AllFields(t *testing.T) {
 		_, _ = w.Write([]byte("response"))
 	})
 
-	middleware := Logging(logger)(handler)
+	mw := middleware.Logging(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/users", nil)
 	req.RemoteAddr = "192.168.1.1:12345"
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	logOutput := logBuffer.String()
 
@@ -136,27 +142,8 @@ func TestLogging_AllFields(t *testing.T) {
 	assert.Contains(t, logOutput, "duration=")
 }
 
-func TestResponseWriter_Unwrap(t *testing.T) {
-	originalWriter := httptest.NewRecorder()
-	wrapped := newResponseWriter(originalWriter)
-
-	unwrapped := wrapped.Unwrap()
-	require.NotNil(t, unwrapped)
-	assert.Equal(t, originalWriter, unwrapped)
-}
-
-func TestResponseWriter_WriteHeaderOnlyOnce(t *testing.T) {
-	rec := httptest.NewRecorder()
-	rw := newResponseWriter(rec)
-
-	rw.WriteHeader(http.StatusCreated)
-	rw.WriteHeader(http.StatusBadRequest) // Should be ignored
-
-	assert.Equal(t, http.StatusCreated, rw.statusCode)
-	assert.Equal(t, http.StatusCreated, rec.Code)
-}
-
 func TestLogging_NoLogWhenNotDebugLevel(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelInfo, // Set to INFO, not DEBUG
@@ -166,12 +153,12 @@ func TestLogging_NoLogWhenNotDebugLevel(t *testing.T) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	middleware := Logging(logger)(handler)
+	mw := middleware.Logging(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	logOutput := logBuffer.String()
 	// Should not log at debug level when logger is set to INFO

@@ -1,4 +1,4 @@
-package middleware
+package middleware_test
 
 import (
 	"bytes"
@@ -8,9 +8,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"go-htmx-template/internal/server/middleware"
 )
 
 func TestRecovery_PanicCaught(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -20,18 +23,19 @@ func TestRecovery_PanicCaught(t *testing.T) {
 		panic("test panic")
 	})
 
-	middleware := Recovery(logger)(handler)
+	mw := middleware.Recovery(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
 	// Should not panic, should handle gracefully
 	assert.NotPanics(t, func() {
-		middleware.ServeHTTP(rec, req)
+		mw.ServeHTTP(rec, req)
 	})
 }
 
 func TestRecovery_Returns500(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -41,18 +45,19 @@ func TestRecovery_Returns500(t *testing.T) {
 		panic("test panic")
 	})
 
-	middleware := Recovery(logger)(handler)
+	mw := middleware.Recovery(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 	assert.Contains(t, rec.Body.String(), "500 Internal Server Error")
 }
 
 func TestRecovery_LogsPanic(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -63,12 +68,12 @@ func TestRecovery_LogsPanic(t *testing.T) {
 		panic(panicMessage)
 	})
 
-	middleware := Recovery(logger)(handler)
+	mw := middleware.Recovery(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	logOutput := logBuffer.String()
 	assert.Contains(t, logOutput, "panic recovered")
@@ -79,6 +84,7 @@ func TestRecovery_LogsPanic(t *testing.T) {
 }
 
 func TestRecovery_NoPanic(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -89,12 +95,12 @@ func TestRecovery_NoPanic(t *testing.T) {
 		_, _ = w.Write([]byte("all good"))
 	})
 
-	middleware := Recovery(logger)(handler)
+	mw := middleware.Recovery(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "all good", rec.Body.String())
@@ -104,6 +110,7 @@ func TestRecovery_NoPanic(t *testing.T) {
 }
 
 func TestRecovery_ChainsCorrectly(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -123,18 +130,19 @@ func TestRecovery_ChainsCorrectly(t *testing.T) {
 	})
 
 	// Chain: Recovery -> TestMiddleware -> Handler
-	middleware := Recovery(logger)(testMiddleware(handler))
+	mw := middleware.Recovery(logger)(testMiddleware(handler))
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	assert.True(t, middlewareCalled, "middleware chain should execute")
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
 func TestRecovery_PanicWithNilValue(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -144,14 +152,14 @@ func TestRecovery_PanicWithNilValue(t *testing.T) {
 		panic(nil)
 	})
 
-	middleware := Recovery(logger)(handler)
+	mw := middleware.Recovery(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
 	// Should handle nil panic gracefully
 	assert.NotPanics(t, func() {
-		middleware.ServeHTTP(rec, req)
+		mw.ServeHTTP(rec, req)
 	})
 
 	// Note: panic(nil) doesn't actually trigger defer recover in Go
@@ -159,6 +167,7 @@ func TestRecovery_PanicWithNilValue(t *testing.T) {
 }
 
 func TestRecovery_PanicWithError(t *testing.T) {
+	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -169,12 +178,12 @@ func TestRecovery_PanicWithError(t *testing.T) {
 		panic(testError)
 	})
 
-	middleware := Recovery(logger)(handler)
+	mw := middleware.Recovery(logger)(handler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
-	middleware.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 

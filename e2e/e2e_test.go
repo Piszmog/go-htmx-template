@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -191,8 +192,9 @@ func waitForHealthCheck(baseURL string) error {
 					continue
 				}
 
-				// Verify expected response
-				if string(body) == `{"status":"ok"}` {
+				// Verify expected response (contains "version" field with JSON)
+				bodyStr := string(body)
+				if strings.Contains(bodyStr, `"version"`) && strings.Contains(bodyStr, `"dev"`) {
 					fmt.Println("✓ App health check passed")
 					return nil
 				}
