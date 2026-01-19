@@ -91,7 +91,6 @@ func beforeAll() {
 		log.Fatalf("could not start app: %v", err)
 	}
 
-	// Wait for app to become healthy (replaces time.Sleep)
 	if err = waitForHealthCheck(baseUrL.String()); err != nil {
 		log.Fatalf("app failed health check: %v", err)
 	}
