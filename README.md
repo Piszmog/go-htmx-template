@@ -283,54 +283,6 @@ call the following command,
 migrate create -ext sql -dir internal/db/migrations <name of migration>
 ```
 
-#### Example Connection to Turso
-
-If you want to connect to a remote Database, like [Turso](https://turso.tech/), you can create a struct that implements `Database`.
-
-```golang
-package db
-
-import (
-	"database/sql"
-	"log/slog"
-
-	"go-htmx-template/internal/db/queries"
-	_ "github.com/tursodatabase/libsql-client-go/libsql"
-)
-
-type RemoteDB struct {
-	logger  *slog.Logger
-	db      *sql.DB
-	queries *queries.Queries
-}
-
-var _ Database = (*RemoteDB)(nil)
-
-func (d *RemoteDB) DB() *sql.DB {
-	return d.db
-}
-
-func (d *RemoteDB) Queries() *queries.Queries {
-	return d.queries
-}
-
-func (d *RemoteDB) Logger() *slog.Logger {
-	return d.logger
-}
-
-func (d *RemoteDB) Close() error {
-	return d.db.Close()
-}
-
-func newRemoteDB(logger *slog.Logger, name string, token string) (*RemoteDB, error) {
-	db, err := sql.Open("libsql", "libsql://"+name+".turso.io?authToken="+token)
-	if err != nil {
-		return nil, err
-	}
-	return &RemoteDB{logger: logger, db: db, queries: queries.New(db)}, nil
-}
-```
-
 ### Dist
 
 This is where your assets live in `internal/dist/`. Any Javascript, images, or styling needs to go in the 

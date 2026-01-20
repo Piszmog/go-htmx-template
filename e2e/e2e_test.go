@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/playwright-community/playwright-go"
-	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	_ "modernc.org/sqlite"
 )
 
@@ -205,7 +204,7 @@ func waitForHealthCheck(baseURL string) error {
 }
 
 func seedDB() error {
-	db, err := sql.Open("libsql", "file:../test-db.sqlite3")
+	db, err := sql.Open("sqlite", "file:../test-db.sqlite3")
 	if err != nil {
 		return err
 	}

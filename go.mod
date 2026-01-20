@@ -7,7 +7,6 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/playwright-community/playwright-go v0.5200.1
 	github.com/stretchr/testify v1.11.1
-	github.com/tursodatabase/libsql-client-go v0.0.0-20251219100830-236aa1ff8acc
 	golang.org/x/time v0.14.0
 	modernc.org/sqlite v1.42.2
 )
@@ -21,7 +20,6 @@ require (
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cli/browser v1.3.0 // indirect
-	github.com/coder/websocket v1.8.14 // indirect
 	github.com/cubicdaiya/gonp v1.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/deckarep/golang-set/v2 v2.8.0 // indirect

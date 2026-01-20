@@ -5,7 +5,6 @@ import (
 	"go-htmx-template/internal/db/queries"
 	"log/slog"
 
-	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	_ "modernc.org/sqlite"
 )
 
@@ -34,7 +33,7 @@ func (d *LocalDB) Close() error {
 }
 
 func newLocalDB(logger *slog.Logger, path string) (*LocalDB, error) {
-	db, err := sql.Open("libsql", "file:"+path)
+	db, err := sql.Open("sqlite", "file:"+path)
 	if err != nil {
 		return nil, err
 	}
