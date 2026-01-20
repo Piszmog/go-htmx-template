@@ -21,9 +21,9 @@ func New(logger *slog.Logger, addr string, opts ...Option) *Server {
 		Addr:              addr,
 		WriteTimeout:      15 * time.Second,
 		ReadTimeout:       15 * time.Second,
-		IdleTimeout:       60 * time.Second, // Close idle keep-alive connections
-		ReadHeaderTimeout: 5 * time.Second,  // Prevent slowloris attacks
-		MaxHeaderBytes:    1 << 20,          // 1 MB header limit
+		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	server := &Server{srv: srv, logger: logger}
