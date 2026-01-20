@@ -51,6 +51,27 @@ func WithReadTimeout(timeout time.Duration) Option {
 	}
 }
 
+// WithIdleTimeout sets the idle timeout.
+func WithIdleTimeout(timeout time.Duration) Option {
+	return func(s *Server) {
+		s.srv.IdleTimeout = timeout
+	}
+}
+
+// WithReadHeaderTimeout sets the read header timeout.
+func WithReadHeaderTimeout(timeout time.Duration) Option {
+	return func(s *Server) {
+		s.srv.ReadHeaderTimeout = timeout
+	}
+}
+
+// WithMaxHeaderBytes sets the maximum header bytes.
+func WithMaxHeaderBytes(bytes int) Option {
+	return func(s *Server) {
+		s.srv.MaxHeaderBytes = bytes
+	}
+}
+
 // WithRouter sets the handler.
 func WithRouter(handler http.Handler) Option {
 	return func(s *Server) {
