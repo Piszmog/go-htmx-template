@@ -51,6 +51,7 @@ The application can be configured using environment variables. For local develop
 | `LOG_LEVEL` | `info` | Logging level: `debug`, `info`, `warn`, `error` |
 | `LOG_OUTPUT` | `text` | Log format: `text` or `json` |
 | `DB_URL` | `./db.sqlite3` | Path to SQLite database file |
+| `RATE_LIMIT` | `50` | Requests per minute per IP address |
 
 ### Example
 
@@ -112,6 +113,68 @@ A few different technologies are configured to help getting off the ground easie
 - [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
 - [playwright-go](https://github.com/playwright-community/playwright-go) for E2E testing.
 
+## Security
+
+This template comes with comprehensive security features enabled by default to help you build secure applications from the start.
+
+### CSRF Protection
+
+The application uses Go 1.25+'s native `http.CrossOriginProtection` for CSRF defense. This provides transparent protection without requiring CSRF tokens in your forms.
+
+- **How it works:** Validates requests using the `Sec-Fetch-Site` header
+- **What's protected:** POST, PUT, DELETE, PATCH requests
+- **Configuration:** Enabled by default in the middleware chain
+- **Implementation:** See `internal/server/middleware/csrf.go`
+
+### Rate Limiting
+
+Per-IP rate limiting prevents abuse and helps protect against DoS attacks.
+
+- **Default limit:** 50 requests per minute per IP address
+- **Algorithm:** Token bucket with in-memory storage
+- **Auto-cleanup:** Inactive IP limiters are cleaned up every 10 minutes
+- **Configuration:** Set `RATE_LIMIT` environment variable to customize
+- **Headers:** Returns `Retry-After: 60` when limit exceeded
+- **Implementation:** See `internal/server/middleware/ratelimit.go`
+
+### Security Headers
+
+The following security headers are automatically set on all responses:
+
+- `X-Frame-Options: DENY` - Prevents clickjacking attacks
+- `X-Content-Type-Options: nosniff` - Prevents MIME-type sniffing
+- `Referrer-Policy: strict-origin-when-cross-origin` - Controls referrer information
+- `Permissions-Policy: geolocation=(), microphone=(), camera=()` - Restricts browser features
+- `Strict-Transport-Security` - Enforces HTTPS (when using TLS)
+
+**Implementation:** See `internal/server/middleware/security.go`
+
+### Server Hardening
+
+The HTTP server is configured with timeouts to prevent slowloris and similar attacks:
+
+- `ReadHeaderTimeout: 5s` - Maximum time to read request headers
+- `ReadTimeout: 15s` - Maximum time to read entire request
+- `WriteTimeout: 15s` - Maximum time to write response
+- `IdleTimeout: 60s` - Maximum idle connection time
+- `MaxHeaderBytes: 1MB` - Maximum header size
+
+**Implementation:** See `internal/server/server.go`
+
+### Panic Recovery
+
+A recovery middleware catches panics and logs them with full stack traces, preventing the server from crashing while providing debugging information.
+
+**Implementation:** See `internal/server/middleware/recovery.go`
+
+### Testing
+
+Comprehensive security tests are included in `e2e/security_test.go`:
+- Security headers validation
+- CSRF protection enforcement
+- Rate limiting behavior
+- Server timeout configurations
+
 ## Structure
 
 ```text
@@ -123,6 +186,7 @@ A few different technologies are configured to help getting off the ground easie
 │       └── release.yml
 ├── .gitignore
 ├── .goreleaser.yaml
+├── AGENTS.md
 ├── Dockerfile
 ├── cmd
 │   └── server
@@ -140,22 +204,36 @@ A few different technologies are configured to help getting off the ground easie
 │   │   │   ├── 20240407203525_init.down.sql
 │   │   │   └── 20240407203525_init.up.sql
 │   │   └── queries
-│   │       └── query.sql
+│   │       ├── db.go
+│   │       ├── models.go
+│   │       ├── query.sql
+│   │       └── query.sql.go
 │   ├── dist
 │   │   ├── assets
+│   │   │   ├── css
+│   │   │   │   └── output@dev.css
 │   │   │   └── js
-│   │   │       └── htmx@2.0.4.min.js
+│   │   │       └── htmx@v2.0.7.min.js
 │   │   └── dist.go
 │   ├── log
 │   │   └── log.go
 │   ├── server
 │   │   ├── handler
 │   │   │   ├── handler.go
+│   │   │   ├── health.go
+│   │   │   ├── health_test.go
 │   │   │   └── home.go
 │   │   ├── middleware
 │   │   │   ├── cache.go
+│   │   │   ├── csrf.go
 │   │   │   ├── logging.go
-│   │   │   └── middleware.go
+│   │   │   ├── logging_test.go
+│   │   │   ├── middleware.go
+│   │   │   ├── ratelimit.go
+│   │   │   ├── recovery.go
+│   │   │   ├── recovery_test.go
+│   │   │   ├── response_writer.go
+│   │   │   └── security.go
 │   │   ├── router
 │   │   │   └── router.go
 │   │   └── server.go
@@ -164,6 +242,7 @@ A few different technologies are configured to help getting off the ground easie
 ├── e2e
 │   ├── e2e_test.go
 │   ├── home_test.go
+│   ├── security_test.go
 │   └── testdata
 │       └── seed.sql
 ├── styles
@@ -283,8 +362,15 @@ with then environment variables `LOG_LEVEL` and `LOG_OUTPUT`. The logger will wr
 
 ### Server
 
-This contains everything related to the HTTP server in `internal/server/`. It comes with a graceful shutdown handler
-that handles `SIGINT`.
+This contains everything related to the HTTP server in `internal/server/`. 
+
+The server is configured with:
+- **Graceful shutdown** - Handles `SIGINT` with 10-second grace period
+- **Timeout protection** - ReadHeaderTimeout, ReadTimeout, WriteTimeout, IdleTimeout
+- **Size limits** - MaxHeaderBytes prevents oversized header attacks
+- **Functional options** - Customize timeouts via `WithReadTimeout`, `WithWriteTimeout`, etc.
+
+See `internal/server/server.go` for configuration details.
 
 #### Router
 
@@ -294,11 +380,27 @@ routers such as [gorilla/mux](https://github.com/gorilla/mux).
 
 #### Middleware
 
-This package contains any middleware to be configured with routes.
+This package contains middleware applied to all routes in a chain:
+
+1. **Recovery** - Catches panics and logs stack traces
+2. **Logging** - Structured request/response logging with duration and status
+3. **Security** - Sets security headers (X-Frame-Options, CSP, etc.)
+4. **RateLimit** - Per-IP rate limiting (configurable via `RATE_LIMIT` env var)
+5. **CSRF** - Cross-origin request protection using Go 1.25+ native implementation
+6. **Cache** - Applied only to static assets under `/assets/`
+
+See `internal/server/router/router.go` for the middleware chain configuration.
 
 #### Handler
 
-This package contains the handlers to handle the actual routes.
+This package contains HTTP handlers for routes:
+
+- **handler.go** - Base handler struct with logger and database dependencies
+- **home.go** - Homepage handler rendering templ components
+- **health.go** - Health check endpoint (`/health`) returning version info
+- **health_test.go** - Unit tests for handler logic
+
+Handlers use dependency injection for testability and follow standard `http.HandlerFunc` signature.
 
 ### Styles
 
