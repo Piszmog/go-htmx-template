@@ -18,9 +18,12 @@ type Server struct {
 // New creates a new server with the given logger, address and options.
 func New(logger *slog.Logger, addr string, opts ...Option) *Server {
 	srv := &http.Server{
-		Addr:         addr,
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
+		Addr:              addr,
+		WriteTimeout:      15 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		IdleTimeout:       60 * time.Second, // Close idle keep-alive connections
+		ReadHeaderTimeout: 5 * time.Second,  // Prevent slowloris attacks
+		MaxHeaderBytes:    1 << 20,          // 1 MB header limit
 	}
 
 	server := &Server{srv: srv, logger: logger}

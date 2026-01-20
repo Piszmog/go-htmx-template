@@ -22,11 +22,14 @@ func New(logger *slog.Logger, database db.Database) http.Handler {
 	mux.Handle(newPath(http.MethodGet, "/assets/"), middleware.CacheMiddleware(http.FileServer(http.FS(dist.AssetsDir))))
 	mux.HandleFunc(newPath(http.MethodGet, "/"), h.Home)
 
-	// Middleware chain
+	// Middleware chain (order matters: first in chain = outermost wrapper)
 	handler := http.Handler(mux)
 	handler = middleware.Chain(
-		middleware.Recovery(logger),
-		middleware.Logging(logger),
+		middleware.Recovery(logger),      // 1. Catch panics (outermost)
+		middleware.Logging(logger),       // 2. Log all requests
+		middleware.Security(logger),      // 3. Set security headers
+		middleware.RateLimit(logger, 50), // 4. Rate limiting (50 req/min)
+		middleware.CSRF(logger),          // 5. CSRF protection (native Go 1.24+)
 	)(handler)
 
 	return handler

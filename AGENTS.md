@@ -19,6 +19,14 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **Headful E2E** (see browser): `HEADFUL=1 go test -v ./e2e -tags=e2e`
 - **Different browser**: `BROWSER=firefox go test -v ./e2e -tags=e2e` (chromium, firefox, webkit)
 
+### Security Testing
+- **All security tests**: `go test -v ./e2e -tags=e2e -run "TestSecurity|TestCSRF|TestRate|TestServer"`
+- **Security headers**: `go test -v ./e2e -tags=e2e -run TestSecurityHeaders`
+- **CSRF protection**: `go test -v ./e2e -tags=e2e -run TestCSRFProtection`
+- **Rate limiting**: `go test -v ./e2e -tags=e2e -run TestRateLimiting`
+- **Server timeouts**: `go test -v ./e2e -tags=e2e -run TestServerTimeouts`
+- **Vulnerability scan**: `govulncheck ./...` (install: `go install golang.org/x/vuln/cmd/govulncheck@latest`)
+
 ### Linting
 - **Lint all**: `golangci-lint run`
 - **Lint with fixes**: `golangci-lint run --fix`
@@ -148,6 +156,11 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **Logging**: Structured logging with `slog`, configurable via `LOG_LEVEL`/`LOG_OUTPUT` env vars
 - **Context**: Always pass `context.Context` as first parameter to functions that need it
 - **Error handling**: Use `fmt.Errorf` with `%w` for error wrapping, log errors with context
+- **Security**: Secure-by-default with native CSRF protection (Go 1.25+), rate limiting, and security headers
+  - **CSRF**: Uses `http.CrossOriginProtection` (no tokens needed, transparent protection via Sec-Fetch-Site header)
+  - **Rate Limiting**: Per-IP token bucket algorithm, 50 requests/minute default, in-memory storage with auto-cleanup
+  - **Security Headers**: X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, HSTS
+  - **Server Hardening**: Timeout configurations (ReadHeaderTimeout, IdleTimeout, MaxHeaderBytes) prevent slowloris attacks
 
 ## Environment Variables
 - **PORT**: Server port (default: 8080)
