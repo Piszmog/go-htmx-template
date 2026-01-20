@@ -27,6 +27,9 @@ func New(logger *slog.Logger, database db.Database) http.Handler {
 	handler = middleware.Chain(
 		middleware.Recovery(logger),
 		middleware.Logging(logger),
+		middleware.Security(logger),
+		middleware.RateLimit(logger, 50),
+		middleware.CSRF(logger),
 	)(handler)
 
 	return handler

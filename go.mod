@@ -1,6 +1,6 @@
 module go-htmx-template
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/a-h/templ v0.3.977
@@ -8,6 +8,7 @@ require (
 	github.com/playwright-community/playwright-go v0.5200.1
 	github.com/stretchr/testify v1.11.1
 	github.com/tursodatabase/libsql-client-go v0.0.0-20251219100830-236aa1ff8acc
+	golang.org/x/time v0.14.0
 	modernc.org/sqlite v1.42.2
 )
 

@@ -18,9 +18,12 @@ type Server struct {
 // New creates a new server with the given logger, address and options.
 func New(logger *slog.Logger, addr string, opts ...Option) *Server {
 	srv := &http.Server{
-		Addr:         addr,
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
+		Addr:              addr,
+		WriteTimeout:      15 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		MaxHeaderBytes:    1 << 20,
 	}
 
 	server := &Server{srv: srv, logger: logger}
@@ -45,6 +48,27 @@ func WithWriteTimeout(timeout time.Duration) Option {
 func WithReadTimeout(timeout time.Duration) Option {
 	return func(s *Server) {
 		s.srv.ReadTimeout = timeout
+	}
+}
+
+// WithIdleTimeout sets the idle timeout.
+func WithIdleTimeout(timeout time.Duration) Option {
+	return func(s *Server) {
+		s.srv.IdleTimeout = timeout
+	}
+}
+
+// WithReadHeaderTimeout sets the read header timeout.
+func WithReadHeaderTimeout(timeout time.Duration) Option {
+	return func(s *Server) {
+		s.srv.ReadHeaderTimeout = timeout
+	}
+}
+
+// WithMaxHeaderBytes sets the maximum header bytes.
+func WithMaxHeaderBytes(bytes int) Option {
+	return func(s *Server) {
+		s.srv.MaxHeaderBytes = bytes
 	}
 }
 
