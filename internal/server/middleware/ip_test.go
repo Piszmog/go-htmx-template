@@ -8,18 +8,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"go-htmx-template/internal/server/middleware"
-	"go-htmx-template/internal/version"
 )
 
-const devVersion = "dev"
+func TestGetClientIP_WithoutProxyHeaders(t *testing.T) {
+	t.Parallel()
 
-// TestGetClientIP_DevMode verifies that in dev mode (no reverse proxy),
-// proxy headers are ignored and only RemoteAddr is used.
-// These tests cannot be parallel because they modify the global version.Value.
-func TestGetClientIP_DevMode(t *testing.T) { //nolint:paralleltest // modifies global version.Value
-	origVersion := version.Value
-	version.Value = devVersion
-	t.Cleanup(func() { version.Value = origVersion })
+	cfg := middleware.IPConfig{TrustProxyHeaders: false}
 
 	tests := []struct {
 		name       string
@@ -62,27 +56,26 @@ func TestGetClientIP_DevMode(t *testing.T) { //nolint:paralleltest // modifies g
 		},
 	}
 
-	for _, tt := range tests { //nolint:paralleltest // modifies global version.Value
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.RemoteAddr = tt.remoteAddr
 			for k, v := range tt.headers {
 				req.Header.Set(k, v)
 			}
 
-			got := middleware.GetClientIP(req)
+			got := middleware.GetClientIP(req, cfg)
 			assert.Equal(t, tt.expected, got)
 		})
 	}
 }
 
-// TestGetClientIP_ProductionMode verifies that in production mode (behind a
-// reverse proxy like Caddy), proxy headers are parsed and validated.
-// These tests cannot be parallel because they modify the global version.Value.
-func TestGetClientIP_ProductionMode(t *testing.T) { //nolint:paralleltest // modifies global version.Value
-	origVersion := version.Value
-	version.Value = "1.0.0"
-	t.Cleanup(func() { version.Value = origVersion })
+func TestGetClientIP_WithProxyHeaders(t *testing.T) {
+	t.Parallel()
+
+	cfg := middleware.IPConfig{TrustProxyHeaders: true}
 
 	tests := []struct {
 		name       string
@@ -178,15 +171,17 @@ func TestGetClientIP_ProductionMode(t *testing.T) { //nolint:paralleltest // mod
 		},
 	}
 
-	for _, tt := range tests { //nolint:paralleltest // modifies global version.Value
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.RemoteAddr = tt.remoteAddr
 			for k, v := range tt.headers {
 				req.Header.Set(k, v)
 			}
 
-			got := middleware.GetClientIP(req)
+			got := middleware.GetClientIP(req, cfg)
 			assert.Equal(t, tt.expected, got)
 		})
 	}

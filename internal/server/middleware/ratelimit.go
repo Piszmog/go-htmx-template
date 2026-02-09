@@ -11,21 +11,21 @@ import (
 )
 
 // RateLimit returns a middleware that rate limits requests per IP address using
-// token bucket algorithm with in-memory storage. The cleanup goroutine stops
-// when the provided context is cancelled.
-func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int) Handler {
+// a token bucket algorithm with in-memory storage.
+func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, ipCfg IPConfig) Handler {
 	limiter := &ipRateLimiter{
 		limiters: make(map[string]*rate.Limiter),
 		rate:     rate.Limit(float64(requestsPerMinute) / 60.0),
 		burst:    requestsPerMinute,
 		logger:   logger,
+		ipCfg:    ipCfg,
 	}
 
 	go limiter.cleanupLoop(ctx)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := GetClientIP(r)
+			ip := GetClientIP(r, limiter.ipCfg)
 
 			if !limiter.allow(ip) {
 				logger.Warn("rate limit exceeded",
@@ -50,10 +50,10 @@ type ipRateLimiter struct {
 	rate     rate.Limit
 	burst    int
 	logger   *slog.Logger
+	ipCfg    IPConfig
 }
 
 func (i *ipRateLimiter) allow(ip string) bool {
-	// Fast path: check if limiter already exists with a read lock.
 	i.mu.RLock()
 	limiter, exists := i.limiters[ip]
 	i.mu.RUnlock()
@@ -62,11 +62,9 @@ func (i *ipRateLimiter) allow(ip string) bool {
 		return limiter.Allow()
 	}
 
-	// Slow path: create a new limiter with a write lock.
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
-	// Double-check after acquiring write lock.
 	limiter, exists = i.limiters[ip]
 	if !exists {
 		limiter = rate.NewLimiter(i.rate, i.burst)
@@ -87,8 +85,8 @@ func (i *ipRateLimiter) cleanupLoop(ctx context.Context) {
 		case <-ticker.C:
 			i.mu.Lock()
 			for ip, limiter := range i.limiters {
-				// Use >= with a small epsilon to avoid floating-point
-				// precision issues that could prevent cleanup of idle IPs.
+				// Epsilon avoids floating-point precision issues that could
+				// prevent cleanup of idle IPs when using exact equality.
 				if limiter.Tokens() >= float64(i.burst)-0.01 {
 					delete(i.limiters, ip)
 				}

@@ -13,6 +13,8 @@ import (
 	"go-htmx-template/internal/server/middleware"
 )
 
+var devIPConfig = middleware.IPConfig{TrustProxyHeaders: false}
+
 func TestLogging_Middleware(t *testing.T) {
 	t.Parallel()
 
@@ -109,7 +111,7 @@ func TestLogging_Middleware(t *testing.T) {
 				Level: slog.LevelDebug,
 			}))
 
-			mw := middleware.Logging(logger)(tt.handler)
+			mw := middleware.Logging(logger, devIPConfig)(tt.handler)
 
 			req := httptest.NewRequest(tt.method, tt.path, nil)
 			if tt.remoteAddr != "" {
@@ -141,7 +143,7 @@ func TestLogging_NoLogWhenNotDebugLevel(t *testing.T) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	mw := middleware.Logging(logger)(handler)
+	mw := middleware.Logging(logger, devIPConfig)(handler)
 
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()

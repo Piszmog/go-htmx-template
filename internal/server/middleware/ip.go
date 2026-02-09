@@ -4,16 +4,18 @@ import (
 	"net"
 	"net/http"
 	"strings"
-
-	"go-htmx-template/internal/version"
 )
 
-// GetClientIP extracts the client IP address from the request. In production
-// (behind a reverse proxy like Caddy), it parses X-Forwarded-For and X-Real-IP
-// headers. In dev mode (version.Value == "dev"), proxy headers are ignored
-// since there is no reverse proxy, and they could be spoofed by the client.
-func GetClientIP(r *http.Request) string {
-	if version.Value != "dev" {
+// IPConfig controls whether proxy headers (X-Forwarded-For, X-Real-IP) are
+// trusted for client IP extraction. Set TrustProxyHeaders to true only when
+// running behind a trusted reverse proxy (e.g., Caddy).
+type IPConfig struct {
+	TrustProxyHeaders bool
+}
+
+// GetClientIP extracts the client IP address from the request.
+func GetClientIP(r *http.Request, cfg IPConfig) string {
+	if cfg.TrustProxyHeaders {
 		if ip := parseXForwardedFor(r); ip != "" {
 			return ip
 		}
@@ -34,14 +36,10 @@ func parseXForwardedFor(r *http.Request) string {
 		return ""
 	}
 
-	// Take the first IP (leftmost = original client).
 	ip, _, _ := strings.Cut(xff, ",")
 	ip = strings.TrimSpace(ip)
-
-	// The value may include a port (e.g., "[::1]:8080"), strip it.
 	ip = stripPort(ip)
 
-	// Validate that it's actually an IP address.
 	if net.ParseIP(ip) == nil {
 		return ""
 	}
@@ -65,8 +63,6 @@ func parseXRealIP(r *http.Request) string {
 	return ip
 }
 
-// stripPort removes the port from an address string. It handles both
-// IPv4 ("192.168.1.1:8080") and IPv6 ("[::1]:8080") formats.
 func stripPort(addr string) string {
 	if host, _, err := net.SplitHostPort(addr); err == nil {
 		return host

@@ -9,15 +9,18 @@ import (
 	"go-htmx-template/internal/dist"
 	"go-htmx-template/internal/server/handler"
 	"go-htmx-template/internal/server/middleware"
+	"go-htmx-template/internal/version"
 )
 
-// New creates a new router with the given logger, database, and context.
-// The context is used for graceful shutdown of background goroutines (e.g.,
-// rate limiter cleanup).
+// New creates a new router with the given context, logger, and database.
 func New(ctx context.Context, logger *slog.Logger, database db.Database) http.Handler {
 	h := &handler.Handler{
 		Logger:   logger,
 		Database: database,
+	}
+
+	ipCfg := middleware.IPConfig{
+		TrustProxyHeaders: version.Value != "dev",
 	}
 
 	mux := http.NewServeMux()
@@ -31,10 +34,10 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database) http.Ha
 	handler := http.Handler(mux)
 	handler = middleware.Chain(
 		middleware.Recovery(logger),
-		middleware.Logging(logger),
+		middleware.Logging(logger, ipCfg),
 		middleware.Security(logger),
-		middleware.RateLimit(ctx, logger, 50),
-		middleware.CSRF(logger),
+		middleware.RateLimit(ctx, logger, 50, ipCfg),
+		middleware.CSRF(logger, ipCfg),
 	)(handler)
 
 	return handler
