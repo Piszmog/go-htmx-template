@@ -92,7 +92,7 @@ func TestLogging_Middleware(t *testing.T) {
 				"Handled request",
 				"method=POST",
 				"path=/api/users",
-				"remote=192.168.1.1:12345",
+				"remote=192.168.1.1",
 				"status=200",
 				"bytes=8",
 				"duration=",

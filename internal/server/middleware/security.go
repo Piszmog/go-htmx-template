@@ -13,6 +13,18 @@ func Security(logger *slog.Logger) Handler {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+			w.Header().Set("Content-Security-Policy",
+				"default-src 'self'; "+
+					"script-src 'self'; "+
+					"style-src 'self'; "+
+					"img-src 'self' data:; "+
+					"connect-src 'self'; "+
+					"font-src 'self'; "+
+					"object-src 'none'; "+
+					"base-uri 'self'; "+
+					"form-action 'self'; "+
+					"frame-ancestors 'none'",
+			)
 
 			if r.Header.Get("X-Forwarded-Proto") == "https" || r.TLS != nil {
 				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")

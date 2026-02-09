@@ -1,14 +1,16 @@
 package main
 
 import (
+	"context"
 	"errors"
+	"os"
+
+	"github.com/golang-migrate/migrate/v4"
+
 	"go-htmx-template/internal/db"
 	"go-htmx-template/internal/log"
 	"go-htmx-template/internal/server"
 	"go-htmx-template/internal/server/router"
-	"os"
-
-	"github.com/golang-migrate/migrate/v4"
 )
 
 func main() {
@@ -42,10 +44,15 @@ func main() {
 		port = "8080"
 	}
 
+	// Context for graceful shutdown of background goroutines (e.g., rate
+	// limiter cleanup). Cancelled when the server shuts down.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	svr := server.New(
 		logger,
 		":"+port,
-		server.WithRouter(router.New(logger, database)),
+		server.WithRouter(router.New(ctx, logger, database)),
 	)
 
 	svr.StartAndWait()

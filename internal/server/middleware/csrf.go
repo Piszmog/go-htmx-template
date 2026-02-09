@@ -14,7 +14,7 @@ func CSRF(logger *slog.Logger) Handler {
 		logger.Warn("CSRF protection rejected cross-origin request",
 			slog.String("method", r.Method),
 			slog.String("path", r.URL.Path),
-			slog.String("remote", r.RemoteAddr),
+			slog.String("remote", GetClientIP(r)),
 			slog.String("origin", r.Header.Get("Origin")),
 			slog.String("host", r.Host),
 			slog.String("sec_fetch_site", r.Header.Get("Sec-Fetch-Site")),

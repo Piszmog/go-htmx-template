@@ -1,8 +1,8 @@
 package middleware
 
 import (
+	"context"
 	"log/slog"
-	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -11,8 +11,9 @@ import (
 )
 
 // RateLimit returns a middleware that rate limits requests per IP address using
-// token bucket algorithm with in-memory storage.
-func RateLimit(logger *slog.Logger, requestsPerMinute int) Handler {
+// token bucket algorithm with in-memory storage. The cleanup goroutine stops
+// when the provided context is cancelled.
+func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int) Handler {
 	limiter := &ipRateLimiter{
 		limiters: make(map[string]*rate.Limiter),
 		rate:     rate.Limit(float64(requestsPerMinute) / 60.0),
@@ -20,11 +21,11 @@ func RateLimit(logger *slog.Logger, requestsPerMinute int) Handler {
 		logger:   logger,
 	}
 
-	go limiter.cleanupLoop()
+	go limiter.cleanupLoop(ctx)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := getClientIP(r)
+			ip := GetClientIP(r)
 
 			if !limiter.allow(ip) {
 				logger.Warn("rate limit exceeded",
@@ -52,10 +53,21 @@ type ipRateLimiter struct {
 }
 
 func (i *ipRateLimiter) allow(ip string) bool {
+	// Fast path: check if limiter already exists with a read lock.
+	i.mu.RLock()
+	limiter, exists := i.limiters[ip]
+	i.mu.RUnlock()
+
+	if exists {
+		return limiter.Allow()
+	}
+
+	// Slow path: create a new limiter with a write lock.
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
-	limiter, exists := i.limiters[ip]
+	// Double-check after acquiring write lock.
+	limiter, exists = i.limiters[ip]
 	if !exists {
 		limiter = rate.NewLimiter(i.rate, i.burst)
 		i.limiters[ip] = limiter
@@ -64,39 +76,27 @@ func (i *ipRateLimiter) allow(ip string) bool {
 	return limiter.Allow()
 }
 
-func (i *ipRateLimiter) cleanupLoop() {
+func (i *ipRateLimiter) cleanupLoop(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		i.mu.Lock()
-		for ip, limiter := range i.limiters {
-			if limiter.Tokens() == float64(i.burst) {
-				delete(i.limiters, ip)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			i.mu.Lock()
+			for ip, limiter := range i.limiters {
+				// Use >= with a small epsilon to avoid floating-point
+				// precision issues that could prevent cleanup of idle IPs.
+				if limiter.Tokens() >= float64(i.burst)-0.01 {
+					delete(i.limiters, ip)
+				}
 			}
+			count := len(i.limiters)
+			i.mu.Unlock()
+
+			i.logger.Debug("rate limiter cleanup", slog.Int("active_ips", count))
 		}
-		count := len(i.limiters)
-		i.mu.Unlock()
-
-		i.logger.Debug("rate limiter cleanup", slog.Int("active_ips", count))
 	}
-}
-
-func getClientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if ip, _, err := net.SplitHostPort(xff); err == nil {
-			return ip
-		}
-		return xff
-	}
-
-	if xri := r.Header.Get("X-Real-IP"); xri != "" {
-		return xri
-	}
-
-	if ip, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		return ip
-	}
-
-	return r.RemoteAddr
 }

@@ -1,15 +1,20 @@
 package router
 
 import (
+	"context"
+	"log/slog"
+	"net/http"
+
 	"go-htmx-template/internal/db"
 	"go-htmx-template/internal/dist"
 	"go-htmx-template/internal/server/handler"
 	"go-htmx-template/internal/server/middleware"
-	"log/slog"
-	"net/http"
 )
 
-func New(logger *slog.Logger, database db.Database) http.Handler {
+// New creates a new router with the given logger, database, and context.
+// The context is used for graceful shutdown of background goroutines (e.g.,
+// rate limiter cleanup).
+func New(ctx context.Context, logger *slog.Logger, database db.Database) http.Handler {
 	h := &handler.Handler{
 		Logger:   logger,
 		Database: database,
@@ -28,7 +33,7 @@ func New(logger *slog.Logger, database db.Database) http.Handler {
 		middleware.Recovery(logger),
 		middleware.Logging(logger),
 		middleware.Security(logger),
-		middleware.RateLimit(logger, 50),
+		middleware.RateLimit(ctx, logger, 50),
 		middleware.CSRF(logger),
 	)(handler)
 

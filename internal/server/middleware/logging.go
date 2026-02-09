@@ -17,7 +17,7 @@ func Logging(logger *slog.Logger) Handler {
 				"Handled request",
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
-				slog.String("remote", r.RemoteAddr),
+				slog.String("remote", GetClientIP(r)),
 				slog.Int("status", rw.statusCode),
 				slog.Int("bytes", rw.bytesWritten),
 				slog.Duration("duration", time.Since(start)),
