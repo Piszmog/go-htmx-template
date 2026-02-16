@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -19,14 +20,20 @@ func main() {
 		log.GetOutput(),
 	)
 
+	if err := run(logger); err != nil {
+		logger.Error("server error", "error", err)
+		os.Exit(1)
+	}
+}
+
+func run(logger *slog.Logger) error {
 	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
 		dbURL = "./db.sqlite3"
 	}
 	database, err := db.New(logger, dbURL)
 	if err != nil {
-		logger.Error("Failed to create database", "error", err)
-		os.Exit(1)
+		return err
 	}
 	defer func() {
 		if cerr := database.Close(); cerr != nil {
@@ -35,8 +42,7 @@ func main() {
 	}()
 
 	if err = db.Migrate(database); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		logger.Error("failed to migrate database", "error", err)
-		return
+		return err
 	}
 
 	port := os.Getenv("PORT")
@@ -55,8 +61,5 @@ func main() {
 		server.WithRouter(router.New(ctx, logger, database)),
 	)
 
-	if err := svr.StartAndWait(); err != nil {
-		logger.Error("server error", "error", err)
-		os.Exit(1)
-	}
+	return svr.StartAndWait()
 }
