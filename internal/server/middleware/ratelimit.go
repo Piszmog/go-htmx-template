@@ -16,7 +16,7 @@ const defaultMaxEntries = 10000
 // a token bucket algorithm with in-memory storage.
 func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, ipCfg IPConfig) Handler {
 	limiter := &ipRateLimiter{
-		limiters:   make(map[string]*rate.Limiter),
+		limiters:   make(map[string]*ipEntry),
 		rate:       rate.Limit(float64(requestsPerMinute) / 60.0),
 		burst:      requestsPerMinute,
 		maxEntries: defaultMaxEntries,
@@ -47,9 +47,14 @@ func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, 
 	}
 }
 
+type ipEntry struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
 type ipRateLimiter struct {
 	mu         sync.RWMutex
-	limiters   map[string]*rate.Limiter
+	limiters   map[string]*ipEntry
 	rate       rate.Limit
 	burst      int
 	maxEntries int
@@ -58,30 +63,60 @@ type ipRateLimiter struct {
 }
 
 func (i *ipRateLimiter) allow(ip string) bool {
+	now := time.Now()
+
 	i.mu.RLock()
-	limiter, exists := i.limiters[ip]
+	entry, exists := i.limiters[ip]
 	i.mu.RUnlock()
 
 	if exists {
-		return limiter.Allow()
+		allowed := entry.limiter.Allow()
+		i.mu.Lock()
+		entry.lastSeen = now
+		i.mu.Unlock()
+		return allowed
 	}
 
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
 	// Double-check after acquiring write lock.
-	limiter, exists = i.limiters[ip]
-	if !exists {
-		// Reject new IPs when the map is at capacity to bound memory
-		// usage during a distributed denial-of-service attack.
-		if len(i.limiters) >= i.maxEntries {
-			return false
-		}
-		limiter = rate.NewLimiter(i.rate, i.burst)
-		i.limiters[ip] = limiter
+	entry, exists = i.limiters[ip]
+	if exists {
+		entry.lastSeen = now
+		return entry.limiter.Allow()
 	}
 
-	return limiter.Allow()
+	// At capacity: evict the oldest idle entry instead of rejecting.
+	if len(i.limiters) >= i.maxEntries {
+		i.evictOldest()
+	}
+
+	entry = &ipEntry{
+		limiter:  rate.NewLimiter(i.rate, i.burst),
+		lastSeen: now,
+	}
+	i.limiters[ip] = entry
+
+	return entry.limiter.Allow()
+}
+
+// evictOldest removes the entry with the oldest lastSeen time.
+// Must be called with i.mu held.
+func (i *ipRateLimiter) evictOldest() {
+	var oldestIP string
+	var oldestTime time.Time
+
+	for ip, entry := range i.limiters {
+		if oldestIP == "" || entry.lastSeen.Before(oldestTime) {
+			oldestIP = ip
+			oldestTime = entry.lastSeen
+		}
+	}
+
+	if oldestIP != "" {
+		delete(i.limiters, oldestIP)
+	}
 }
 
 func (i *ipRateLimiter) cleanupLoop(ctx context.Context) {
@@ -94,10 +129,9 @@ func (i *ipRateLimiter) cleanupLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			i.mu.Lock()
-			for ip, limiter := range i.limiters {
-				// Epsilon avoids floating-point precision issues that could
-				// prevent cleanup of idle IPs when using exact equality.
-				if limiter.Tokens() >= float64(i.burst)-0.01 {
+			cutoff := time.Now().Add(-1 * time.Hour)
+			for ip, entry := range i.limiters {
+				if entry.lastSeen.Before(cutoff) {
 					delete(i.limiters, ip)
 				}
 			}

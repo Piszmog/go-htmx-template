@@ -12,8 +12,8 @@ func Security(ipCfg IPConfig) Handler {
 			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
 			w.Header().Set("Content-Security-Policy",
 				"default-src 'self'; "+
-					"script-src 'self'; "+
-					"style-src 'self'; "+
+					"script-src 'self' 'unsafe-inline'; "+
+					"style-src 'self' 'unsafe-inline'; "+
 					"img-src 'self' data:; "+
 					"connect-src 'self'; "+
 					"font-src 'self'; "+
@@ -28,7 +28,7 @@ func Security(ipCfg IPConfig) Handler {
 				isHTTPS = r.Header.Get("X-Forwarded-Proto") == "https"
 			}
 			if isHTTPS {
-				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 			}
 
 			next.ServeHTTP(w, r)
