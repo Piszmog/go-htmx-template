@@ -35,7 +35,7 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database) http.Ha
 	handler = middleware.Chain(
 		middleware.Recovery(logger),
 		middleware.Logging(logger, ipCfg),
-		middleware.Security(logger),
+		middleware.Security(ipCfg),
 		middleware.RateLimit(ctx, logger, 50, ipCfg),
 		middleware.CSRF(logger, ipCfg),
 	)(handler)

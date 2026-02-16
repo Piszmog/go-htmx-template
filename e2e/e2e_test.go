@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,7 +26,7 @@ import (
 var (
 	pw          *playwright.Playwright
 	browser     playwright.Browser
-	context     playwright.BrowserContext
+	browserCtx  playwright.BrowserContext
 	page        playwright.Page
 	expect      playwright.PlaywrightAssertions
 	isChromium  bool
@@ -35,7 +35,7 @@ var (
 	browserName = getBrowserName()
 	browserType playwright.BrowserType
 	app         *exec.Cmd
-	baseUrL     *url.URL
+	baseURL     *url.URL
 )
 
 // defaultContextOptions for most tests
@@ -90,7 +90,7 @@ func beforeAll() {
 		log.Fatalf("could not start app: %v", err)
 	}
 
-	if err = waitForHealthCheck(baseUrL.String()); err != nil {
+	if err = waitForHealthCheck(baseURL.String()); err != nil {
 		log.Fatalf("app failed health check: %v", err)
 	}
 
@@ -111,7 +111,7 @@ func startApp() error {
 	)
 
 	var err error
-	baseUrL, err = url.Parse(fmt.Sprintf("http://localhost:%d", port))
+	baseURL, err = url.Parse(fmt.Sprintf("http://localhost:%d", port))
 	if err != nil {
 		return err
 	}
@@ -208,6 +208,7 @@ func seedDB() error {
 	if err != nil {
 		return err
 	}
+	defer db.Close()
 	b, err := os.ReadFile("./testdata/seed.sql")
 	if err != nil {
 		return err
@@ -220,8 +221,7 @@ func seedDB() error {
 }
 
 func getPort() int {
-	randomGenerator := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return randomGenerator.Intn(9001-3000) + 3000
+	return rand.IntN(9001-3000) + 3000
 }
 
 // afterAll does cleanup, e.g. stop playwright driver
@@ -232,7 +232,7 @@ func afterAll() {
 		}
 	}
 	if err := pw.Stop(); err != nil {
-		log.Fatalf("could not start Playwright: %v", err)
+		log.Fatalf("could not stop Playwright: %v", err)
 	}
 	if err := os.Remove("../test-db.sqlite3"); err != nil {
 		log.Fatalf("could not remove test-db.sqlite3: %v", err)
@@ -252,7 +252,7 @@ func beforeEach(t *testing.T, contextOptions ...playwright.BrowserNewContextOpti
 	if len(contextOptions) == 1 {
 		opt = contextOptions[0]
 	}
-	context, page = newBrowserContextAndPage(t, opt)
+	browserCtx, page = newBrowserContextAndPage(t, opt)
 }
 
 func getBrowserName() string {
@@ -265,22 +265,22 @@ func getBrowserName() string {
 
 func newBrowserContextAndPage(t *testing.T, options playwright.BrowserNewContextOptions) (playwright.BrowserContext, playwright.Page) {
 	t.Helper()
-	context, err := browser.NewContext(options)
+	ctx, err := browser.NewContext(options)
 	if err != nil {
 		t.Fatalf("could not create new context: %v", err)
 	}
 	t.Cleanup(func() {
-		if err := context.Close(); err != nil {
+		if err := ctx.Close(); err != nil {
 			t.Errorf("could not close context: %v", err)
 		}
 	})
-	p, err := context.NewPage()
+	p, err := ctx.NewPage()
 	if err != nil {
 		t.Fatalf("could not create new page: %v", err)
 	}
-	return context, p
+	return ctx, p
 }
 
 func getFullPath(relativePath string) string {
-	return baseUrL.ResolveReference(&url.URL{Path: relativePath}).String()
+	return baseURL.ResolveReference(&url.URL{Path: relativePath}).String()
 }
