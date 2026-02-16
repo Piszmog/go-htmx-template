@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -83,9 +84,9 @@ func WithRouter(handler http.Handler) Option {
 }
 
 // StartAndWait starts the server and waits for a signal to shut down.
-func (s *Server) StartAndWait() {
+func (s *Server) StartAndWait() error {
 	s.Start()
-	s.GracefulShutdown()
+	return s.GracefulShutdown()
 }
 
 // Start starts the server.
@@ -99,7 +100,7 @@ func (s *Server) Start() {
 }
 
 // GracefulShutdown shuts down the server gracefully.
-func (s *Server) GracefulShutdown() {
+func (s *Server) GracefulShutdown() error {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
@@ -107,16 +108,16 @@ func (s *Server) GracefulShutdown() {
 	select {
 	case <-sig:
 	case err := <-s.errCh:
-		s.logger.Error("server failed to start", "error", err)
-		os.Exit(1)
+		return fmt.Errorf("server failed to start: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := s.srv.Shutdown(ctx); err != nil {
-		s.logger.Error("server shutdown error", "error", err)
+		return fmt.Errorf("server shutdown: %w", err)
 	}
 
 	s.logger.Info("server stopped")
+	return nil
 }

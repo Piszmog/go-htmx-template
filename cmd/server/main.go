@@ -55,5 +55,8 @@ func main() {
 		server.WithRouter(router.New(ctx, logger, database)),
 	)
 
-	svr.StartAndWait()
+	if err := svr.StartAndWait(); err != nil {
+		logger.Error("server error", "error", err)
+		os.Exit(1)
+	}
 }
