@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"os"
@@ -220,8 +220,7 @@ func seedDB() error {
 }
 
 func getPort() int {
-	randomGenerator := rand.New(rand.NewSource(time.Now().UnixNano()))
-	return randomGenerator.Intn(9001-3000) + 3000
+	return rand.IntN(9001-3000) + 3000
 }
 
 // afterAll does cleanup, e.g. stop playwright driver
@@ -232,7 +231,7 @@ func afterAll() {
 		}
 	}
 	if err := pw.Stop(); err != nil {
-		log.Fatalf("could not start Playwright: %v", err)
+		log.Fatalf("could not stop Playwright: %v", err)
 	}
 	if err := os.Remove("../test-db.sqlite3"); err != nil {
 		log.Fatalf("could not remove test-db.sqlite3: %v", err)

@@ -10,15 +10,18 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const defaultMaxEntries = 10000
+
 // RateLimit returns a middleware that rate limits requests per IP address using
 // a token bucket algorithm with in-memory storage.
 func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, ipCfg IPConfig) Handler {
 	limiter := &ipRateLimiter{
-		limiters: make(map[string]*rate.Limiter),
-		rate:     rate.Limit(float64(requestsPerMinute) / 60.0),
-		burst:    requestsPerMinute,
-		logger:   logger,
-		ipCfg:    ipCfg,
+		limiters:   make(map[string]*rate.Limiter),
+		rate:       rate.Limit(float64(requestsPerMinute) / 60.0),
+		burst:      requestsPerMinute,
+		maxEntries: defaultMaxEntries,
+		logger:     logger,
+		ipCfg:      ipCfg,
 	}
 
 	go limiter.cleanupLoop(ctx)
@@ -45,12 +48,13 @@ func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, 
 }
 
 type ipRateLimiter struct {
-	mu       sync.RWMutex
-	limiters map[string]*rate.Limiter
-	rate     rate.Limit
-	burst    int
-	logger   *slog.Logger
-	ipCfg    IPConfig
+	mu         sync.RWMutex
+	limiters   map[string]*rate.Limiter
+	rate       rate.Limit
+	burst      int
+	maxEntries int
+	logger     *slog.Logger
+	ipCfg      IPConfig
 }
 
 func (i *ipRateLimiter) allow(ip string) bool {
@@ -65,8 +69,14 @@ func (i *ipRateLimiter) allow(ip string) bool {
 	i.mu.Lock()
 	defer i.mu.Unlock()
 
+	// Double-check after acquiring write lock.
 	limiter, exists = i.limiters[ip]
 	if !exists {
+		// Reject new IPs when the map is at capacity to bound memory
+		// usage during a distributed denial-of-service attack.
+		if len(i.limiters) >= i.maxEntries {
+			return false
+		}
 		limiter = rate.NewLimiter(i.rate, i.burst)
 		i.limiters[ip] = limiter
 	}

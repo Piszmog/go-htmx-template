@@ -1,12 +1,9 @@
 package middleware
 
-import (
-	"log/slog"
-	"net/http"
-)
+import "net/http"
 
 // Security returns a middleware that sets security headers.
-func Security(logger *slog.Logger) Handler {
+func Security(ipCfg IPConfig) Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Frame-Options", "DENY")
@@ -26,11 +23,14 @@ func Security(logger *slog.Logger) Handler {
 					"frame-ancestors 'none'",
 			)
 
-			if r.Header.Get("X-Forwarded-Proto") == "https" || r.TLS != nil {
+			isHTTPS := r.TLS != nil
+			if !isHTTPS && ipCfg.TrustProxyHeaders {
+				isHTTPS = r.Header.Get("X-Forwarded-Proto") == "https"
+			}
+			if isHTTPS {
 				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 			}
 
-			logger.Debug("security headers set", slog.String("path", r.URL.Path))
 			next.ServeHTTP(w, r)
 		})
 	}

@@ -2,10 +2,12 @@ package server
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -13,6 +15,7 @@ import (
 type Server struct {
 	srv    *http.Server
 	logger *slog.Logger
+	errCh  chan error
 }
 
 // New creates a new server with the given logger, address and options.
@@ -26,7 +29,7 @@ func New(logger *slog.Logger, addr string, opts ...Option) *Server {
 		MaxHeaderBytes:    1 << 20,
 	}
 
-	server := &Server{srv: srv, logger: logger}
+	server := &Server{srv: srv, logger: logger, errCh: make(chan error, 1)}
 	for _, opt := range opts {
 		opt(server)
 	}
@@ -89,30 +92,31 @@ func (s *Server) StartAndWait() {
 func (s *Server) Start() {
 	go func() {
 		s.logger.Info("starting server", "port", s.srv.Addr)
-		if err := s.srv.ListenAndServe(); err != nil {
-			s.logger.Warn("failed to start server", "error", err)
+		if err := s.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			s.errCh <- err
 		}
 	}()
 }
 
 // GracefulShutdown shuts down the server gracefully.
 func (s *Server) GracefulShutdown() {
-	c := make(chan os.Signal, 1)
-	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
-	signal.Notify(c, os.Interrupt)
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
-	// Block until we receive our signal.
-	<-c
+	// Block until we receive a shutdown signal or a fatal server error.
+	select {
+	case <-sig:
+	case err := <-s.errCh:
+		s.logger.Error("server failed to start", "error", err)
+		os.Exit(1)
+	}
 
-	// Create a deadline to wait for.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	// Doesn't block if no connections, but will otherwise wait
-	// until the timeout deadline.
-	_ = s.srv.Shutdown(ctx)
-	// Optionally, you could run srv.Shutdown in a goroutine and block on
-	// <-ctx.Done() if your application should wait for other services
-	// to finalize based on context cancellation.
-	s.logger.Info("shutting down")
+
+	if err := s.srv.Shutdown(ctx); err != nil {
+		s.logger.Error("server shutdown error", "error", err)
+	}
+
+	s.logger.Info("server stopped")
 }
