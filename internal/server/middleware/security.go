@@ -10,6 +10,10 @@ func Security(ipCfg IPConfig) Handler {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+			// 'unsafe-inline' is required for templ's onclick attribute handlers
+			// (e.g., onclick="...") and inline styles. HTMX v2 does not need it. This is a
+			// deliberate trade-off: inline event handler support at the cost of weakened
+			// CSP XSS protection.
 			w.Header().Set("Content-Security-Policy",
 				"default-src 'self'; "+
 					"script-src 'self' 'unsafe-inline'; "+

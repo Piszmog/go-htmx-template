@@ -36,7 +36,7 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database) http.Ha
 		middleware.Recovery(logger),
 		middleware.Logging(logger, ipCfg),
 		middleware.Security(ipCfg),
-		middleware.RateLimit(ctx, logger, 50, ipCfg),
+		middleware.RateLimit(ctx, logger, 50, middleware.DefaultMaxEntries, ipCfg),
 		middleware.CSRF(logger, ipCfg),
 	)(handler)
 

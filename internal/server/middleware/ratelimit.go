@@ -11,17 +11,19 @@ import (
 	"golang.org/x/time/rate"
 )
 
-const defaultMaxEntries = 10000
+// DefaultMaxEntries is the default cap on the number of IPs tracked by RateLimit.
+const DefaultMaxEntries = 10000
 
 // RateLimit returns a middleware that rate limits requests per IP address using
-// a token bucket algorithm with in-memory storage.
-func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, ipCfg IPConfig) Handler {
+// a token bucket algorithm with in-memory storage. maxEntries caps the number
+// of IPs tracked simultaneously; use defaultMaxEntries if unsure.
+func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, maxEntries int, ipCfg IPConfig) Handler {
 	rl := &ipRateLimiter{
 		limiters:   make(map[string]*list.Element),
 		order:      list.New(),
 		rate:       rate.Limit(float64(requestsPerMinute) / 60.0),
 		burst:      requestsPerMinute,
-		maxEntries: defaultMaxEntries,
+		maxEntries: maxEntries,
 		logger:     logger,
 		ipCfg:      ipCfg,
 	}
