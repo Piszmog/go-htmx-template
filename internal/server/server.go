@@ -107,6 +107,7 @@ func (s *Server) GracefulShutdown() error {
 	// Block until we receive a shutdown signal or a fatal server error.
 	select {
 	case <-sig:
+		signal.Stop(sig)
 	case err := <-s.errCh:
 		return fmt.Errorf("server failed to start: %w", err)
 	}
