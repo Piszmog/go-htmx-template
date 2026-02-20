@@ -14,7 +14,7 @@ RUN go mod download \
     && go build -ldflags="-s -w -X go-htmx-template/internal/version.Value=${VERSION}" -o my-app ./cmd/server
 
 ## Deploy
-FROM gcr.io/distroless/static-debian12
+FROM gcr.io/distroless/static-debian13
 
 WORKDIR /
 
