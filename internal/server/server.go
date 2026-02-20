@@ -2,10 +2,13 @@ package server
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -13,6 +16,7 @@ import (
 type Server struct {
 	srv    *http.Server
 	logger *slog.Logger
+	errCh  chan error
 }
 
 // New creates a new server with the given logger, address and options.
@@ -26,7 +30,7 @@ func New(logger *slog.Logger, addr string, opts ...Option) *Server {
 		MaxHeaderBytes:    1 << 20,
 	}
 
-	server := &Server{srv: srv, logger: logger}
+	server := &Server{srv: srv, logger: logger, errCh: make(chan error, 1)}
 	for _, opt := range opts {
 		opt(server)
 	}
@@ -80,39 +84,49 @@ func WithRouter(handler http.Handler) Option {
 }
 
 // StartAndWait starts the server and waits for a signal to shut down.
-func (s *Server) StartAndWait() {
+func (s *Server) StartAndWait() error {
 	s.Start()
-	s.GracefulShutdown()
+	return s.GracefulShutdown()
 }
 
 // Start starts the server.
 func (s *Server) Start() {
 	go func() {
 		s.logger.Info("starting server", "port", s.srv.Addr)
-		if err := s.srv.ListenAndServe(); err != nil {
-			s.logger.Warn("failed to start server", "error", err)
+		if err := s.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			s.errCh <- err
 		}
 	}()
 }
 
 // GracefulShutdown shuts down the server gracefully.
-func (s *Server) GracefulShutdown() {
-	c := make(chan os.Signal, 1)
-	// We'll accept graceful shutdowns when quit via SIGINT (Ctrl+C)
-	// SIGKILL, SIGQUIT or SIGTERM (Ctrl+/) will not be caught.
-	signal.Notify(c, os.Interrupt)
+func (s *Server) GracefulShutdown() error {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
-	// Block until we receive our signal.
-	<-c
+	// Block until we receive a shutdown signal or a fatal server error.
+	select {
+	case <-sig:
+		signal.Stop(sig)
+		// Drain errCh: if the server failed to start concurrently, return that error.
+		select {
+		case err := <-s.errCh:
+			return fmt.Errorf("server failed to start: %w", err)
+		default:
+		}
+	case err := <-s.errCh:
+		return fmt.Errorf("server failed to start: %w", err)
+	}
 
-	// Create a deadline to wait for.
+	s.logger.Info("shutting down server")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	// Doesn't block if no connections, but will otherwise wait
-	// until the timeout deadline.
-	_ = s.srv.Shutdown(ctx)
-	// Optionally, you could run srv.Shutdown in a goroutine and block on
-	// <-ctx.Done() if your application should wait for other services
-	// to finalize based on context cancellation.
-	s.logger.Info("shutting down")
+
+	if err := s.srv.Shutdown(ctx); err != nil {
+		return fmt.Errorf("server shutdown: %w", err)
+	}
+
+	s.logger.Info("server stopped")
+	return nil
 }

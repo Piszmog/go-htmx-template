@@ -1,8 +1,34 @@
 package home
 
-templ Page() {
+import "strconv"
+
+templ Page(count int) {
 	<div class="text-center">
 		<h1 class="text-5xl font-bold">Welcome!</h1>
 		<p class="text-indigo-200 mt-4">This is a simple home screen.</p>
+		@Counter(count)
+		@GreetButton()
+	</div>
+}
+
+templ GreetButton() {
+	<script nonce={ templ.GetNonce(ctx) }>
+		function handleClick(el) {
+			alert(el.textContent + ' clicked');
+		}
+	</script>
+	<button onclick="handleClick(this)"
+		class="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600">
+		Greet
+	</button>
+}
+
+templ Counter(count int) {
+	<div id="counter" class="mt-8">
+		<p class="text-2xl mb-4">Count: { strconv.Itoa(count) }</p>
+		<button hx-post="/count" hx-target="#counter" hx-swap="outerHTML"
+			class="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">
+			Increment
+		</button>
 	</div>
 }

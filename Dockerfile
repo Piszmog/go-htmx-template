@@ -1,5 +1,5 @@
 ## Build
-FROM golang:1.25 AS build
+FROM golang:1.26 AS build
 
 ARG VERSION='dev'
 
@@ -7,15 +7,14 @@ WORKDIR /app
 
 COPY ./ /app
 
-RUN apt-get update \
-    && go mod download \
+RUN go mod download \
     && go tool templ generate -path ./internal/components \
     && go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@${VERSION}.css --minify \
     && go tool sqlc generate \
     && go build -ldflags="-s -w -X go-htmx-template/internal/version.Value=${VERSION}" -o my-app ./cmd/server
 
 ## Deploy
-FROM gcr.io/distroless/base-debian12
+FROM gcr.io/distroless/static-debian13
 
 WORKDIR /
 

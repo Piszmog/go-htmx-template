@@ -13,7 +13,7 @@ import (
 )
 
 func TestSecurityHeaders(t *testing.T) {
-	resp, err := http.Get(baseUrL.String())
+	resp, err := http.Get(baseURL.String())
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
@@ -26,8 +26,9 @@ func TestSecurityHeaders(t *testing.T) {
 	csp := resp.Header.Get("Content-Security-Policy")
 	assert.NotEmpty(t, csp, "Content-Security-Policy header should be set")
 	assert.Contains(t, csp, "default-src 'self'")
-	assert.Contains(t, csp, "script-src 'self'")
-	assert.Contains(t, csp, "style-src 'self'")
+	assert.Contains(t, csp, "script-src 'self' 'nonce-")
+	assert.NotRegexp(t, `script-src [^;]*'unsafe-inline'`, csp)
+	assert.Contains(t, csp, "style-src 'self' 'unsafe-inline'")
 	assert.Contains(t, csp, "object-src 'none'")
 	assert.Contains(t, csp, "frame-ancestors 'none'")
 }
@@ -36,7 +37,7 @@ func TestCSRFProtection(t *testing.T) {
 	t.Run("same-origin GET allowed", func(t *testing.T) {
 		beforeEach(t)
 
-		_, err := page.Goto(baseUrL.String())
+		_, err := page.Goto(baseURL.String())
 		require.NoError(t, err)
 
 		title, err := page.Title()
@@ -46,7 +47,7 @@ func TestCSRFProtection(t *testing.T) {
 
 	t.Run("cross-origin POST blocked", func(t *testing.T) {
 		client := &http.Client{Timeout: 5 * time.Second}
-		req, err := http.NewRequest("POST", baseUrL.String()+"/health", nil)
+		req, err := http.NewRequest("POST", baseURL.String()+"/health", nil)
 		require.NoError(t, err)
 
 		req.Header.Set("Origin", "https://evil.com")
@@ -61,7 +62,7 @@ func TestCSRFProtection(t *testing.T) {
 
 	t.Run("same-site POST allowed", func(t *testing.T) {
 		client := &http.Client{Timeout: 5 * time.Second}
-		req, err := http.NewRequest("POST", baseUrL.String()+"/health", nil)
+		req, err := http.NewRequest("POST", baseURL.String()+"/health", nil)
 		require.NoError(t, err)
 
 		req.Header.Set("Sec-Fetch-Site", "same-origin")
@@ -80,8 +81,8 @@ func TestRateLimiting(t *testing.T) {
 	rateLimitHit := false
 	var lastStatusCode int
 
-	for i := 0; i < 60; i++ {
-		resp, err := client.Get(baseUrL.String() + "/health")
+	for range 60 {
+		resp, err := client.Get(baseURL.String() + "/health")
 		require.NoError(t, err)
 		lastStatusCode = resp.StatusCode
 
@@ -116,8 +117,8 @@ func TestRateLimitingIgnoresXForwardedForInDevMode(t *testing.T) {
 	// to verify that spoofing X-Forwarded-For does NOT prevent rate limiting.
 	rateLimitHit := false
 
-	for i := 0; i < 60; i++ {
-		req, err := http.NewRequest("GET", baseUrL.String()+"/health", nil)
+	for i := range 60 {
+		req, err := http.NewRequest("GET", baseURL.String()+"/health", nil)
 		require.NoError(t, err)
 
 		// Each request pretends to come from a different IP via
@@ -144,7 +145,7 @@ func TestRateLimitingIgnoresXForwardedForInDevMode(t *testing.T) {
 func TestServerTimeouts(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
-	resp, err := http.Get(baseUrL.String() + "/health")
+	resp, err := http.Get(baseURL.String() + "/health")
 	require.NoError(t, err)
 	defer resp.Body.Close()
 

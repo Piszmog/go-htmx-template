@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"container/list"
 	"context"
 	"log/slog"
 	"net/http"
@@ -10,24 +11,30 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// DefaultMaxEntries is the default cap on the number of IPs tracked by RateLimit.
+const DefaultMaxEntries = 10000
+
 // RateLimit returns a middleware that rate limits requests per IP address using
-// a token bucket algorithm with in-memory storage.
-func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, ipCfg IPConfig) Handler {
-	limiter := &ipRateLimiter{
-		limiters: make(map[string]*rate.Limiter),
-		rate:     rate.Limit(float64(requestsPerMinute) / 60.0),
-		burst:    requestsPerMinute,
-		logger:   logger,
-		ipCfg:    ipCfg,
+// a token bucket algorithm with in-memory storage. maxEntries caps the number
+// of IPs tracked simultaneously; use defaultMaxEntries if unsure.
+func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, maxEntries int, ipCfg IPConfig) Handler {
+	rl := &ipRateLimiter{
+		limiters:   make(map[string]*list.Element),
+		order:      list.New(),
+		rate:       rate.Limit(float64(requestsPerMinute) / 60.0),
+		burst:      requestsPerMinute,
+		maxEntries: maxEntries,
+		logger:     logger,
+		ipCfg:      ipCfg,
 	}
 
-	go limiter.cleanupLoop(ctx)
+	go rl.cleanupLoop(ctx)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := GetClientIP(r, limiter.ipCfg)
+			ip := GetClientIP(r, rl.ipCfg)
 
-			if !limiter.allow(ip) {
+			if !rl.allow(ip) {
 				logger.Warn("rate limit exceeded",
 					slog.String("ip", ip),
 					slog.String("method", r.Method),
@@ -44,37 +51,61 @@ func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, 
 	}
 }
 
+type ipEntry struct {
+	ip       string
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
 type ipRateLimiter struct {
-	mu       sync.RWMutex
-	limiters map[string]*rate.Limiter
-	rate     rate.Limit
-	burst    int
-	logger   *slog.Logger
-	ipCfg    IPConfig
+	mu         sync.Mutex
+	limiters   map[string]*list.Element
+	order      *list.List
+	rate       rate.Limit
+	burst      int
+	maxEntries int
+	logger     *slog.Logger
+	ipCfg      IPConfig
 }
 
-func (i *ipRateLimiter) allow(ip string) bool {
-	i.mu.RLock()
-	limiter, exists := i.limiters[ip]
-	i.mu.RUnlock()
+func (rl *ipRateLimiter) allow(ip string) bool {
+	now := time.Now()
 
-	if exists {
-		return limiter.Allow()
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	if elem, exists := rl.limiters[ip]; exists {
+		entry := elem.Value.(*ipEntry)
+		entry.lastSeen = now
+		rl.order.MoveToFront(elem)
+		return entry.limiter.Allow()
 	}
 
-	i.mu.Lock()
-	defer i.mu.Unlock()
-
-	limiter, exists = i.limiters[ip]
-	if !exists {
-		limiter = rate.NewLimiter(i.rate, i.burst)
-		i.limiters[ip] = limiter
+	// At capacity: evict the least recently seen entry.
+	if len(rl.limiters) >= rl.maxEntries {
+		back := rl.order.Back()
+		if back != nil {
+			evicted := rl.order.Remove(back).(*ipEntry)
+			delete(rl.limiters, evicted.ip)
+			rl.logger.Warn("rate limiter evicted entry at capacity",
+				slog.String("evicted_ip", evicted.ip),
+				slog.Int("max_entries", rl.maxEntries),
+			)
+		}
 	}
 
-	return limiter.Allow()
+	entry := &ipEntry{
+		ip:       ip,
+		limiter:  rate.NewLimiter(rl.rate, rl.burst),
+		lastSeen: now,
+	}
+	elem := rl.order.PushFront(entry)
+	rl.limiters[ip] = elem
+
+	return entry.limiter.Allow()
 }
 
-func (i *ipRateLimiter) cleanupLoop(ctx context.Context) {
+func (rl *ipRateLimiter) cleanupLoop(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 
@@ -83,18 +114,24 @@ func (i *ipRateLimiter) cleanupLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			i.mu.Lock()
-			for ip, limiter := range i.limiters {
-				// Epsilon avoids floating-point precision issues that could
-				// prevent cleanup of idle IPs when using exact equality.
-				if limiter.Tokens() >= float64(i.burst)-0.01 {
-					delete(i.limiters, ip)
+			rl.mu.Lock()
+			cutoff := time.Now().Add(-1 * time.Hour)
+			// Iterate the entire list — MoveToFront provides approximate ordering
+			// but does not guarantee strict lastSeen order, so breaking early could
+			// miss stale entries positioned before recently-seen ones.
+			for elem := rl.order.Back(); elem != nil; {
+				entry := elem.Value.(*ipEntry)
+				prev := elem.Prev()
+				if entry.lastSeen.Before(cutoff) {
+					rl.order.Remove(elem)
+					delete(rl.limiters, entry.ip)
 				}
+				elem = prev
 			}
-			count := len(i.limiters)
-			i.mu.Unlock()
+			count := len(rl.limiters)
+			rl.mu.Unlock()
 
-			i.logger.Debug("rate limiter cleanup", slog.Int("active_ips", count))
+			rl.logger.Debug("rate limiter cleanup", slog.Int("active_ips", count))
 		}
 	}
 }
