@@ -1,87 +1,114 @@
-package middleware
+package middleware_test
 
 import (
+	"bytes"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
+	"go-htmx-template/internal/server/middleware"
 )
+
+// loggingRig wires up the Logging middleware (which wraps responseWriter
+// internally) and returns the log buffer so tests can inspect captured fields.
+func loggingRig(t *testing.T) (middleware.Handler, *bytes.Buffer) {
+	t.Helper()
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	return middleware.Logging(logger, middleware.IPConfig{}), &buf
+}
 
 func TestResponseWriter_DefaultStatusCode(t *testing.T) {
 	t.Parallel()
+	lm, logBuf := loggingRig(t)
 
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	rw := newResponseWriter(rec)
+	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// write nothing — responseWriter default is 200
+	})).ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusOK, rw.statusCode)
-	assert.Equal(t, 0, rw.bytesWritten)
-	assert.False(t, rw.wroteHeader)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, logBuf.String(), "status=200")
 }
 
 func TestResponseWriter_WriteHeaderCapturesCode(t *testing.T) {
 	t.Parallel()
+	lm, logBuf := loggingRig(t)
 
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	rw := newResponseWriter(rec)
-	rw.WriteHeader(http.StatusNotFound)
+	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})).ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusNotFound, rw.statusCode)
 	assert.Equal(t, http.StatusNotFound, rec.Code)
-	assert.True(t, rw.wroteHeader)
+	assert.Contains(t, logBuf.String(), "status=404")
 }
 
 func TestResponseWriter_WriteHeaderIsIdempotent(t *testing.T) {
 	t.Parallel()
+	lm, logBuf := loggingRig(t)
 
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	rw := newResponseWriter(rec)
-	rw.WriteHeader(http.StatusNotFound)
-	rw.WriteHeader(http.StatusInternalServerError)
+	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusInternalServerError) // must be ignored
+	})).ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusNotFound, rw.statusCode, "second WriteHeader call should be ignored")
 	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, logBuf.String(), "status=404")
+	assert.NotContains(t, logBuf.String(), "status=500")
 }
 
 func TestResponseWriter_WriteCountsBytesAcrossMultipleCalls(t *testing.T) {
 	t.Parallel()
+	lm, logBuf := loggingRig(t)
 
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	rw := newResponseWriter(rec)
+	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte("Hello"))
+		assert.NoError(t, err)
+		_, err = w.Write([]byte(" World"))
+		assert.NoError(t, err)
+	})).ServeHTTP(rec, req)
 
-	n1, err := rw.Write([]byte("Hello"))
-	require.NoError(t, err)
-	assert.Equal(t, 5, n1)
-
-	n2, err := rw.Write([]byte(" World"))
-	require.NoError(t, err)
-	assert.Equal(t, 6, n2)
-
-	assert.Equal(t, 11, rw.bytesWritten)
 	assert.Equal(t, "Hello World", rec.Body.String())
+	assert.Contains(t, logBuf.String(), "bytes=11")
 }
 
 func TestResponseWriter_WriteImplicitlyCallsWriteHeader(t *testing.T) {
 	t.Parallel()
+	lm, logBuf := loggingRig(t)
 
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	rw := newResponseWriter(rec)
+	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte("body")) // no explicit WriteHeader call
+		assert.NoError(t, err)
+	})).ServeHTTP(rec, req)
 
-	assert.False(t, rw.wroteHeader, "header should not be written before Write")
-
-	_, err := rw.Write([]byte("body"))
-	require.NoError(t, err)
-
-	assert.True(t, rw.wroteHeader, "Write should implicitly call WriteHeader")
-	assert.Equal(t, http.StatusOK, rw.statusCode)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Contains(t, logBuf.String(), "status=200")
 }
 
 func TestResponseWriter_UnwrapReturnsUnderlying(t *testing.T) {
 	t.Parallel()
+	lm, _ := loggingRig(t)
 
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	rw := newResponseWriter(rec)
+	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// http.NewResponseController calls Unwrap() to find Flush on the
+		// underlying *httptest.ResponseRecorder.
+		err := http.NewResponseController(w).Flush()
+		assert.NoError(t, err, "Flush via ResponseController requires Unwrap to work")
+	})).ServeHTTP(rec, req)
 
-	assert.Equal(t, rec, rw.Unwrap())
+	assert.True(t, rec.Flushed, "underlying recorder should have been flushed")
 }

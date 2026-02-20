@@ -11,6 +11,7 @@ import (
 	"go-htmx-template/internal/version"
 )
 
+//nolint:paralleltest // mutates package-level version.Value; parallelism would cause a data race
 func TestCacheMiddleware_DevMode(t *testing.T) {
 	original := version.Value
 	version.Value = "dev"
@@ -27,6 +28,7 @@ func TestCacheMiddleware_DevMode(t *testing.T) {
 	assert.Equal(t, "no-cache", rec.Header().Get("Cache-Control"))
 }
 
+//nolint:paralleltest // mutates package-level version.Value; parallelism would cause a data race
 func TestCacheMiddleware_ProdMode(t *testing.T) {
 	original := version.Value
 	version.Value = "1.2.3"

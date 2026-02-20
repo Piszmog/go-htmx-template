@@ -1,7 +1,6 @@
 package handler_test
 
 import (
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +16,7 @@ import (
 
 func newHomeHandler() *handler.Handler {
 	return &handler.Handler{
-		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Logger: slog.New(slog.DiscardHandler),
 	}
 }
 
@@ -58,6 +57,8 @@ func TestHome_ContainsWelcomeText(t *testing.T) {
 }
 
 func TestCount_StatusCode(t *testing.T) {
+	t.Parallel()
+
 	h := newHomeHandler()
 	req := httptest.NewRequest(http.MethodPost, "/count", nil)
 	rec := httptest.NewRecorder()
@@ -68,6 +69,8 @@ func TestCount_StatusCode(t *testing.T) {
 }
 
 func TestCount_ContentType(t *testing.T) {
+	t.Parallel()
+
 	h := newHomeHandler()
 	req := httptest.NewRequest(http.MethodPost, "/count", nil)
 	rec := httptest.NewRecorder()
@@ -78,6 +81,8 @@ func TestCount_ContentType(t *testing.T) {
 }
 
 func TestCount_ContainsCounterFragment(t *testing.T) {
+	t.Parallel()
+
 	h := newHomeHandler()
 	req := httptest.NewRequest(http.MethodPost, "/count", nil)
 	rec := httptest.NewRecorder()
@@ -89,6 +94,7 @@ func TestCount_ContainsCounterFragment(t *testing.T) {
 	assert.Contains(t, body, "Count: ")
 }
 
+//nolint:paralleltest // shares package-level counter; two sequential calls must not be interleaved
 func TestCount_IncrementsOnEachCall(t *testing.T) {
 	h := newHomeHandler()
 
@@ -111,11 +117,10 @@ func TestCount_IncrementsOnEachCall(t *testing.T) {
 // extractCountFromBody parses the integer after "Count: " in the response body.
 func extractCountFromBody(body string) (int, bool) {
 	const prefix = "Count: "
-	idx := strings.Index(body, prefix)
-	if idx < 0 {
+	_, rest, found := strings.Cut(body, prefix)
+	if !found {
 		return 0, false
 	}
-	rest := body[idx+len(prefix):]
 	end := strings.IndexFunc(rest, func(r rune) bool {
 		return r < '0' || r > '9'
 	})

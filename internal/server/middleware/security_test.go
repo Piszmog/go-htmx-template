@@ -2,7 +2,6 @@ package middleware_test
 
 import (
 	"crypto/tls"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -17,7 +16,7 @@ import (
 )
 
 func discardLogger() *slog.Logger {
-	return slog.New(slog.NewTextHandler(io.Discard, nil))
+	return slog.New(slog.DiscardHandler)
 }
 
 func TestSecurity_StaticHeaders(t *testing.T) {

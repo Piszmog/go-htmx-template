@@ -30,6 +30,7 @@ func request(handler http.Handler, ip string) int {
 
 // TestAllowDeny verifies requests within burst pass and excess are rejected.
 func TestAllowDeny(t *testing.T) {
+	t.Parallel()
 	h := newHandler(t, 3, 1000)
 
 	for i := range 3 {
@@ -44,6 +45,7 @@ func TestAllowDeny(t *testing.T) {
 
 // TestDifferentIPsAreIndependent confirms separate IPs have independent buckets.
 func TestDifferentIPsAreIndependent(t *testing.T) {
+	t.Parallel()
 	h := newHandler(t, 1, 1000)
 
 	if code := request(h, "1.1.1.1"); code != http.StatusOK {
@@ -63,6 +65,7 @@ func TestDifferentIPsAreIndependent(t *testing.T) {
 // TestLRUEviction confirms the LRU entry is evicted at capacity and receives a
 // fresh token bucket on its next request.
 func TestLRUEviction(t *testing.T) {
+	t.Parallel()
 	h := newHandler(t, 10, 2)
 
 	// Exhaust ip-A's tokens (burst=10).
@@ -86,6 +89,7 @@ func TestLRUEviction(t *testing.T) {
 
 // TestMaxEntriesOne confirms that only one IP is tracked at a time.
 func TestMaxEntriesOne(t *testing.T) {
+	t.Parallel()
 	h := newHandler(t, 10, 1)
 
 	// Exhaust ip-A.
@@ -108,6 +112,7 @@ func TestMaxEntriesOne(t *testing.T) {
 // TestConcurrentAccess races many goroutines through allow() to surface data races.
 // Run with: go test -race ./internal/server/middleware/...
 func TestConcurrentAccess(t *testing.T) {
+	t.Parallel()
 	h := newHandler(t, 1000, 500)
 
 	var wg sync.WaitGroup

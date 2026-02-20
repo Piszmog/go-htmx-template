@@ -16,6 +16,8 @@ import (
 	"go-htmx-template/internal/server/router"
 )
 
+var errInvalidRateLimit = errors.New("invalid RATE_LIMIT value")
+
 func main() {
 	logger := log.New(
 		log.GetLevel(),
@@ -56,7 +58,7 @@ func run(logger *slog.Logger) error {
 	if rateLimitStr := os.Getenv("RATE_LIMIT"); rateLimitStr != "" {
 		parsed, err := strconv.Atoi(rateLimitStr)
 		if err != nil || parsed <= 0 {
-			return fmt.Errorf("invalid RATE_LIMIT value: %s", rateLimitStr)
+			return fmt.Errorf("%w: %s", errInvalidRateLimit, rateLimitStr)
 		}
 		rateLimit = parsed
 	}
