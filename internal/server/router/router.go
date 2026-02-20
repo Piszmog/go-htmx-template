@@ -12,8 +12,8 @@ import (
 	"go-htmx-template/internal/version"
 )
 
-// New creates a new router with the given context, logger, and database.
-func New(ctx context.Context, logger *slog.Logger, database db.Database) http.Handler {
+// New creates a new router with the given context, logger, database, and rate limit.
+func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLimit int) http.Handler {
 	h := &handler.Handler{
 		Logger:   logger,
 		Database: database,
@@ -36,7 +36,7 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database) http.Ha
 		middleware.Recovery(logger),
 		middleware.Logging(logger, ipCfg),
 		middleware.Security(ipCfg),
-		middleware.RateLimit(ctx, logger, 50, middleware.DefaultMaxEntries, ipCfg),
+		middleware.RateLimit(ctx, logger, rateLimit, middleware.DefaultMaxEntries, ipCfg),
 		middleware.CSRF(logger, ipCfg),
 	)(handler)
 

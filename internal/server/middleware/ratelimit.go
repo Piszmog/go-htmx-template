@@ -87,6 +87,10 @@ func (rl *ipRateLimiter) allow(ip string) bool {
 		if back != nil {
 			evicted := rl.order.Remove(back).(*ipEntry)
 			delete(rl.limiters, evicted.ip)
+			rl.logger.Warn("rate limiter evicted entry at capacity",
+				slog.String("evicted_ip", evicted.ip),
+				slog.Int("max_entries", rl.maxEntries),
+			)
 		}
 	}
 
@@ -112,15 +116,16 @@ func (rl *ipRateLimiter) cleanupLoop(ctx context.Context) {
 		case <-ticker.C:
 			rl.mu.Lock()
 			cutoff := time.Now().Add(-1 * time.Hour)
-			// Iterate from back (oldest) and stop early once we hit a recent entry.
+			// Iterate the entire list — MoveToFront provides approximate ordering
+			// but does not guarantee strict lastSeen order, so breaking early could
+			// miss stale entries positioned before recently-seen ones.
 			for elem := rl.order.Back(); elem != nil; {
 				entry := elem.Value.(*ipEntry)
-				if entry.lastSeen.After(cutoff) {
-					break
-				}
 				prev := elem.Prev()
-				rl.order.Remove(elem)
-				delete(rl.limiters, entry.ip)
+				if entry.lastSeen.Before(cutoff) {
+					rl.order.Remove(elem)
+					delete(rl.limiters, entry.ip)
+				}
 				elem = prev
 			}
 			count := len(rl.limiters)

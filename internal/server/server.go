@@ -108,9 +108,17 @@ func (s *Server) GracefulShutdown() error {
 	select {
 	case <-sig:
 		signal.Stop(sig)
+		// Drain errCh: if the server failed to start concurrently, return that error.
+		select {
+		case err := <-s.errCh:
+			return fmt.Errorf("server failed to start: %w", err)
+		default:
+		}
 	case err := <-s.errCh:
 		return fmt.Errorf("server failed to start: %w", err)
 	}
+
+	s.logger.Info("shutting down server")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 
 	"github.com/golang-migrate/migrate/v4"
 
@@ -50,6 +52,15 @@ func run(logger *slog.Logger) error {
 		port = "8080"
 	}
 
+	rateLimit := 50
+	if rateLimitStr := os.Getenv("RATE_LIMIT"); rateLimitStr != "" {
+		parsed, err := strconv.Atoi(rateLimitStr)
+		if err != nil || parsed <= 0 {
+			return fmt.Errorf("invalid RATE_LIMIT value: %s", rateLimitStr)
+		}
+		rateLimit = parsed
+	}
+
 	// Context for graceful shutdown of background goroutines (e.g., rate
 	// limiter cleanup). Cancelled when the server shuts down.
 	ctx, cancel := context.WithCancel(context.Background())
@@ -58,7 +69,7 @@ func run(logger *slog.Logger) error {
 	svr := server.New(
 		logger,
 		":"+port,
-		server.WithRouter(router.New(ctx, logger, database)),
+		server.WithRouter(router.New(ctx, logger, database, rateLimit)),
 	)
 
 	return svr.StartAndWait()
