@@ -16,7 +16,7 @@ templ head(title string) {
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<meta name="description" content="Hello world"/>
 		<title>{ title }</title>
-		<script src="/assets/js/htmx@v2.0.7.min.js"></script>
+		<script src="/assets/js/htmx@v2.0.7.min.js" nonce={ templ.GetNonce(ctx) }></script>
 		<link href={ "/assets/css/output@" + version.Value + ".css" } rel="stylesheet"/>
 	</head>
 }

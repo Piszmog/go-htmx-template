@@ -26,8 +26,9 @@ func TestSecurityHeaders(t *testing.T) {
 	csp := resp.Header.Get("Content-Security-Policy")
 	assert.NotEmpty(t, csp, "Content-Security-Policy header should be set")
 	assert.Contains(t, csp, "default-src 'self'")
-	assert.Contains(t, csp, "script-src 'self'")
-	assert.Contains(t, csp, "style-src 'self'")
+	assert.Contains(t, csp, "script-src 'self' 'nonce-")
+	assert.NotContains(t, csp, "'unsafe-inline'")
+	assert.Contains(t, csp, "style-src 'self' 'unsafe-inline'")
 	assert.Contains(t, csp, "object-src 'none'")
 	assert.Contains(t, csp, "frame-ancestors 'none'")
 }
