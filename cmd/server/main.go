@@ -61,8 +61,6 @@ func run(logger *slog.Logger) error {
 		rateLimit = parsed
 	}
 
-	// Context for graceful shutdown of background goroutines (e.g., rate
-	// limiter cleanup). Cancelled when the server shuts down.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

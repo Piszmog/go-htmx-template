@@ -36,7 +36,7 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLim
 	handler = middleware.Chain(
 		middleware.Recovery(logger),
 		middleware.Logging(logger, ipCfg),
-		middleware.Security(ipCfg),
+		middleware.Security(logger, ipCfg),
 		middleware.RateLimit(ctx, logger, rateLimit, middleware.DefaultMaxEntries, ipCfg),
 		middleware.CSRF(logger, ipCfg),
 	)(handler)

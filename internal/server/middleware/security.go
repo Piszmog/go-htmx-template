@@ -4,17 +4,19 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/a-h/templ"
 )
 
 // Security returns a middleware that sets security headers.
-func Security(ipCfg IPConfig) Handler {
+func Security(logger *slog.Logger, ipCfg IPConfig) Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			nonce, err := generateNonce()
 			if err != nil {
+				logger.ErrorContext(r.Context(), "failed to generate nonce", "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
@@ -29,7 +31,7 @@ func Security(ipCfg IPConfig) Handler {
 			w.Header().Set("Content-Security-Policy",
 				"default-src 'self'; "+
 					fmt.Sprintf("script-src 'self' 'nonce-%s'; ", nonce)+
-				"script-src-attr 'unsafe-inline'; "+
+					"script-src-attr 'unsafe-inline'; "+
 					"style-src 'self' 'unsafe-inline'; "+
 					"img-src 'self' data:; "+
 					"connect-src 'self'; "+
@@ -45,8 +47,6 @@ func Security(ipCfg IPConfig) Handler {
 				isHTTPS = r.Header.Get("X-Forwarded-Proto") == "https"
 			}
 			if isHTTPS {
-				// No preload: preload requires submission to the HSTS preload list and
-				// is irreversible for the lifetime of the entry.
 				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 			}
 
