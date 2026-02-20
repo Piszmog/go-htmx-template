@@ -29,6 +29,7 @@ func Security(ipCfg IPConfig) Handler {
 			w.Header().Set("Content-Security-Policy",
 				"default-src 'self'; "+
 					fmt.Sprintf("script-src 'self' 'nonce-%s'; ", nonce)+
+				"script-src-attr 'unsafe-inline'; "+
 					"style-src 'self' 'unsafe-inline'; "+
 					"img-src 'self' data:; "+
 					"connect-src 'self'; "+
