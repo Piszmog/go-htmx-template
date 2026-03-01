@@ -1,0 +1,39 @@
+# Version control
+.git
+.gitignore
+.github
+
+# Tests
+e2e
+
+# Docs / config not used in build
+*.md
+.golangci.yml
+.air.toml
+.goreleaser.yaml
+.mcp.json
+
+# Local tooling and IDE
+.claude
+.playwright-mcp
+.idea
+*.iml
+
+# Local dev runtime files
+.env
+.env.example
+*.sqlite3
+*.sh
+
+# Build artifacts / temp
+tmp
+goreleaser-dist
+vendor
+
+# Go workspace files (would override module downloads inside builder)
+go.work
+go.work.sum
+
+# macOS metadata
+.DS_Store
+._*

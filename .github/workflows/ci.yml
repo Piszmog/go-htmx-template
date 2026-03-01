@@ -20,6 +20,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
+          cache-dependency-path: 'go.sum'
       - run: go mod download
       - run: go tool templ generate -path ./internal/components
       - run: go tool sqlc generate
@@ -27,16 +28,8 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: latest
-  sql-lint:
-    name: SQL Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-      - run: go mod download
-      - run: go tool sqlc vet
+      - name: SQL Lint
+        run: go tool sqlc vet
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -45,6 +38,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
+          cache-dependency-path: 'go.sum'
       - run: go mod download
       - run: go tool templ generate -path ./internal/components
       - run: go tool sqlc generate
@@ -58,6 +52,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: 'go.mod'
+          cache-dependency-path: 'go.sum'
       - run: go mod download
       - run: go tool templ generate -path ./internal/components
       - run: go tool sqlc generate
@@ -65,9 +60,9 @@ jobs:
   release-dryrun:
     name: Release Dry Run
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     needs:
       - lint
-      - sql-lint
       - test
       - e2e
     steps:
@@ -89,12 +84,12 @@ jobs:
   docker:
     name: Docker
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
     permissions:
       contents: read
       packages: write
     needs:
       - lint
-      - sql-lint
       - test
       - e2e
     steps:
