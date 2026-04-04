@@ -12,8 +12,6 @@ on:
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
-env:
-  GOMEMLIMIT: 3GiB
 jobs:
   lint:
     name: Lint
@@ -48,7 +46,7 @@ jobs:
       - name: Generate
         run: go tool templ generate -path ./internal/components && go tool sqlc generate
       - name: Test
-        run: go test -race -p 1 -parallel 1 ./...
+        run: go test -race ./...
         env:
           TESTING: "1"
   e2e:
