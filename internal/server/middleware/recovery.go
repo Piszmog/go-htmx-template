@@ -6,8 +6,8 @@ import (
 	"runtime/debug"
 )
 
-// Recovery returns a middleware that recovers from panics.
-func Recovery(logger *slog.Logger) Handler {
+// Recovery returns a middleware that recovers from panics and delegates to onPanic.
+func Recovery(logger *slog.Logger, onPanic http.Handler) Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
@@ -20,7 +20,7 @@ func Recovery(logger *slog.Logger) Handler {
 						slog.String("path", r.URL.Path),
 					)
 
-					http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
+					onPanic.ServeHTTP(w, r)
 				}
 			}()
 

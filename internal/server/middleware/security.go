@@ -25,13 +25,12 @@ func Security(logger *slog.Logger, ipCfg IPConfig) Handler {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-			// 'unsafe-inline' is kept for style-src because HTMX v2 injects inline
-			// styles for request indicators. script-src uses a per-request nonce so
-			// that templ script components work without 'unsafe-inline'.
+			// style-src 'unsafe-inline' is kept because HTMX v2 injects inline styles
+			// for request indicators. script-src uses a per-request nonce so that
+			// templ script components work without 'unsafe-inline'.
 			w.Header().Set("Content-Security-Policy",
 				"default-src 'self'; "+
 					fmt.Sprintf("script-src 'self' 'nonce-%s'; ", nonce)+
-					"script-src-attr 'unsafe-inline'; "+
 					"style-src 'self' 'unsafe-inline'; "+
 					"img-src 'self' data:; "+
 					"connect-src 'self'; "+
@@ -55,10 +54,12 @@ func Security(logger *slog.Logger, ipCfg IPConfig) Handler {
 	}
 }
 
+const nonceBytes = 16
+
 func generateNonce() (string, error) {
-	b := make([]byte, 16)
+	b := make([]byte, nonceBytes)
 	if _, err := rand.Read(b); err != nil {
-		return "", err
+		return "", fmt.Errorf("generating nonce: %w", err)
 	}
 	return base64.StdEncoding.EncodeToString(b), nil
 }

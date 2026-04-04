@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"go-htmx-template/internal/db/queries"
-	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
@@ -20,17 +19,16 @@ var migrations embed.FS
 type Database interface {
 	DB() *sql.DB
 	Queries() *queries.Queries
-	Logger() *slog.Logger
 	Close() error
 }
 
-func New(logger *slog.Logger, url string) (Database, error) {
-	db, err := newLocalDB(logger, url)
+func New(url string) (Database, error) {
+	db, err := newLocalDB(url)
 	if err != nil {
 		return nil, err
 	}
 	if err = db.DB().PingContext(context.Background()); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pinging database: %w", err)
 	}
 	return db, nil
 }
@@ -57,5 +55,8 @@ func Migrate(db Database) (err error) {
 		return fmt.Errorf("failed to create migration: %w", err)
 	}
 
-	return m.Up()
+	if err = m.Up(); err != nil {
+		return fmt.Errorf("running migrations: %w", err)
+	}
+	return nil
 }

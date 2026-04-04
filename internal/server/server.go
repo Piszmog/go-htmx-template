@@ -12,6 +12,15 @@ import (
 	"time"
 )
 
+const (
+	writeTimeout      = 15 * time.Second
+	readTimeout       = 15 * time.Second
+	idleTimeout       = 60 * time.Second
+	readHeaderTimeout = 5 * time.Second
+	maxHeaderBytes    = 1 << 20
+	shutdownTimeout   = 10 * time.Second
+)
+
 // Server represents an HTTP server.
 type Server struct {
 	srv    *http.Server
@@ -23,11 +32,11 @@ type Server struct {
 func New(logger *slog.Logger, addr string, opts ...Option) *Server {
 	srv := &http.Server{
 		Addr:              addr,
-		WriteTimeout:      15 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		IdleTimeout:       60 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		MaxHeaderBytes:    1 << 20,
+		WriteTimeout:      writeTimeout,
+		ReadTimeout:       readTimeout,
+		IdleTimeout:       idleTimeout,
+		ReadHeaderTimeout: readHeaderTimeout,
+		MaxHeaderBytes:    maxHeaderBytes,
 	}
 
 	server := &Server{srv: srv, logger: logger, errCh: make(chan error, 1)}
@@ -41,41 +50,6 @@ func New(logger *slog.Logger, addr string, opts ...Option) *Server {
 // Option represents a server option.
 type Option func(*Server)
 
-// WithWriteTimeout sets the write timeout.
-func WithWriteTimeout(timeout time.Duration) Option {
-	return func(s *Server) {
-		s.srv.WriteTimeout = timeout
-	}
-}
-
-// WithReadTimeout sets the read timeout.
-func WithReadTimeout(timeout time.Duration) Option {
-	return func(s *Server) {
-		s.srv.ReadTimeout = timeout
-	}
-}
-
-// WithIdleTimeout sets the idle timeout.
-func WithIdleTimeout(timeout time.Duration) Option {
-	return func(s *Server) {
-		s.srv.IdleTimeout = timeout
-	}
-}
-
-// WithReadHeaderTimeout sets the read header timeout.
-func WithReadHeaderTimeout(timeout time.Duration) Option {
-	return func(s *Server) {
-		s.srv.ReadHeaderTimeout = timeout
-	}
-}
-
-// WithMaxHeaderBytes sets the maximum header bytes.
-func WithMaxHeaderBytes(bytes int) Option {
-	return func(s *Server) {
-		s.srv.MaxHeaderBytes = bytes
-	}
-}
-
 // WithRouter sets the handler.
 func WithRouter(handler http.Handler) Option {
 	return func(s *Server) {
@@ -85,12 +59,11 @@ func WithRouter(handler http.Handler) Option {
 
 // StartAndWait starts the server and waits for a signal to shut down.
 func (s *Server) StartAndWait() error {
-	s.Start()
-	return s.GracefulShutdown()
+	s.start()
+	return s.gracefulShutdown()
 }
 
-// Start starts the server.
-func (s *Server) Start() {
+func (s *Server) start() {
 	go func() {
 		s.logger.Info("starting server", "port", s.srv.Addr)
 		if err := s.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -99,8 +72,7 @@ func (s *Server) Start() {
 	}()
 }
 
-// GracefulShutdown shuts down the server gracefully.
-func (s *Server) GracefulShutdown() error {
+func (s *Server) gracefulShutdown() error {
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
@@ -120,7 +92,7 @@ func (s *Server) GracefulShutdown() error {
 
 	s.logger.Info("shutting down server")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if err := s.srv.Shutdown(ctx); err != nil {

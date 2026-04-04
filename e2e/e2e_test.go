@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/rand/v2"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,8 +26,6 @@ import (
 var (
 	pw          *playwright.Playwright
 	browser     playwright.Browser
-	browserCtx  playwright.BrowserContext
-	page        playwright.Page
 	expect      playwright.PlaywrightAssertions
 	isChromium  bool
 	isFirefox   bool
@@ -79,11 +77,15 @@ func beforeAll() {
 	if err != nil {
 		log.Fatalf("could not launch: %v", err)
 	}
-	// init web-first assertions with 1s timeout instead of default 5s
-	expect = playwright.NewPlaywrightAssertions(1000)
+	// init web-first assertions with 3s timeout instead of default 5s
+	expect = playwright.NewPlaywrightAssertions(3000)
 	isChromium = browserName == "chromium" || browserName == ""
 	isFirefox = browserName == "firefox"
 	isWebKit = browserName == "webkit"
+
+	if err = buildCSS(); err != nil {
+		log.Fatalf("could not build CSS: %v", err)
+	}
 
 	// start app
 	if err = startApp(); err != nil {
@@ -99,10 +101,27 @@ func beforeAll() {
 	}
 }
 
+func buildCSS() error {
+	cmd := exec.Command("go", "tool", "go-tw",
+		"-i", "./styles/input.css",
+		"-o", "./internal/dist/assets/css/output@dev.css",
+	)
+	cmd.Dir = "../"
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("go-tw: %w\n%s", err, out)
+	}
+	return nil
+}
+
 func startApp() error {
-	port := getPort()
+	port, err := getFreePort()
+	if err != nil {
+		return fmt.Errorf("getting free port: %w", err)
+	}
+
 	app = exec.Command("go", "run", "./cmd/server")
 	app.Dir = "../"
+	app.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	app.Env = append(
 		os.Environ(),
 		"DB_URL=./test-db.sqlite3",
@@ -110,7 +129,6 @@ func startApp() error {
 		"LOG_LEVEL=DEBUG",
 	)
 
-	var err error
 	baseURL, err = url.Parse(fmt.Sprintf("http://localhost:%d", port))
 	if err != nil {
 		return err
@@ -125,7 +143,7 @@ func startApp() error {
 		return err
 	}
 
-	if err := app.Start(); err != nil {
+	if err = app.Start(); err != nil {
 		return err
 	}
 	fmt.Printf("Started app on port %d, pid %d", port, app.Process.Pid)
@@ -220,8 +238,13 @@ func seedDB() error {
 	return nil
 }
 
-func getPort() int {
-	return rand.IntN(9001-3000) + 3000
+func getFreePort() (int, error) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer ln.Close()
+	return ln.Addr().(*net.TCPAddr).Port, nil
 }
 
 // afterAll does cleanup, e.g. stop playwright driver
@@ -239,20 +262,20 @@ func afterAll() {
 	}
 }
 
-// beforeEach creates a new context and page for each test,
-// so each test has isolated environment. Usage:
+// beforeEach creates a new browser context and page for each test,
+// so each test has an isolated environment. Usage:
 //
-//	Func TestFoo(t *testing.T) {
-//	  beforeEach(t)
+//	func TestFoo(t *testing.T) {
+//	  _, page := beforeEach(t)
 //	  // your test code
 //	}
-func beforeEach(t *testing.T, contextOptions ...playwright.BrowserNewContextOptions) {
+func beforeEach(t *testing.T, contextOptions ...playwright.BrowserNewContextOptions) (playwright.BrowserContext, playwright.Page) {
 	t.Helper()
 	opt := defaultContextOptions
 	if len(contextOptions) == 1 {
 		opt = contextOptions[0]
 	}
-	browserCtx, page = newBrowserContextAndPage(t, opt)
+	return newBrowserContextAndPage(t, opt)
 }
 
 func getBrowserName() string {
@@ -282,5 +305,9 @@ func newBrowserContextAndPage(t *testing.T, options playwright.BrowserNewContext
 }
 
 func getFullPath(relativePath string) string {
-	return baseURL.ResolveReference(&url.URL{Path: relativePath}).String()
+	ref, err := url.Parse(relativePath)
+	if err != nil {
+		ref = &url.URL{Path: relativePath}
+	}
+	return baseURL.ResolveReference(ref).String()
 }

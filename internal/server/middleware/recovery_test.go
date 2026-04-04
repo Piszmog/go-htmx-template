@@ -1,6 +1,7 @@
 package middleware_test
 
 import (
+	"context"
 	"bytes"
 	"log/slog"
 	"net/http"
@@ -11,6 +12,11 @@ import (
 
 	"go-htmx-template/internal/server/middleware"
 )
+
+// panicHandler is a standard onPanic handler used in tests.
+var panicHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
+})
 
 func TestRecovery_PanicHandling(t *testing.T) {
 	t.Parallel()
@@ -81,9 +87,9 @@ func TestRecovery_PanicHandling(t *testing.T) {
 				panic(tt.panicValue)
 			})
 
-			mw := middleware.Recovery(logger)(handler)
+			mw := middleware.Recovery(logger, panicHandler)(handler)
 
-			req := httptest.NewRequest(tt.method, tt.path, nil)
+			req := httptest.NewRequestWithContext(context.Background(), tt.method, tt.path, nil)
 			rec := httptest.NewRecorder()
 
 			// Should not panic, should handle gracefully
@@ -114,9 +120,9 @@ func TestRecovery_NoPanic(t *testing.T) {
 		_, _ = w.Write([]byte("all good"))
 	})
 
-	mw := middleware.Recovery(logger)(handler)
+	mw := middleware.Recovery(logger, panicHandler)(handler)
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
 	mw.ServeHTTP(rec, req)
@@ -149,9 +155,9 @@ func TestRecovery_ChainsCorrectly(t *testing.T) {
 	})
 
 	// Chain: Recovery -> TestMiddleware -> Handler
-	mw := middleware.Recovery(logger)(testMiddleware(handler))
+	mw := middleware.Recovery(logger, panicHandler)(testMiddleware(handler))
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
 	mw.ServeHTTP(rec, req)
@@ -171,9 +177,9 @@ func TestRecovery_PanicWithNilValue(t *testing.T) {
 		panic(nil)
 	})
 
-	mw := middleware.Recovery(logger)(handler)
+	mw := middleware.Recovery(logger, panicHandler)(handler)
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
 	// Should handle nil panic gracefully

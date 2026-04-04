@@ -11,6 +11,12 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const (
+	secondsPerMinute = 60.0
+	cleanupInterval  = 10 * time.Minute
+	staleEntryCutoff = time.Hour
+)
+
 // DefaultMaxEntries is the default cap on the number of IPs tracked by RateLimit.
 const DefaultMaxEntries = 10000
 
@@ -21,7 +27,7 @@ func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, 
 	rl := &ipRateLimiter{
 		limiters:   make(map[string]*list.Element),
 		order:      list.New(),
-		rate:       rate.Limit(float64(requestsPerMinute) / 60.0),
+		rate:       rate.Limit(float64(requestsPerMinute) / secondsPerMinute),
 		burst:      requestsPerMinute,
 		maxEntries: maxEntries,
 		logger:     logger,
@@ -75,7 +81,11 @@ func (rl *ipRateLimiter) allow(ip string) bool {
 	defer rl.mu.Unlock()
 
 	if elem, exists := rl.limiters[ip]; exists {
-		entry := elem.Value.(*ipEntry)
+		entry, ok := elem.Value.(*ipEntry)
+		if !ok {
+			rl.logger.Error("rate limiter: unexpected type in list element")
+			return true
+		}
 		entry.lastSeen = now
 		rl.order.MoveToFront(elem)
 		return entry.limiter.Allow()
@@ -85,12 +95,14 @@ func (rl *ipRateLimiter) allow(ip string) bool {
 	if len(rl.limiters) >= rl.maxEntries {
 		back := rl.order.Back()
 		if back != nil {
-			evicted := rl.order.Remove(back).(*ipEntry)
-			delete(rl.limiters, evicted.ip)
-			rl.logger.Warn("rate limiter evicted entry at capacity",
-				slog.String("evicted_ip", evicted.ip),
-				slog.Int("max_entries", rl.maxEntries),
-			)
+			evicted, ok := rl.order.Remove(back).(*ipEntry)
+			if ok {
+				delete(rl.limiters, evicted.ip)
+				rl.logger.Warn("rate limiter evicted entry at capacity",
+					slog.String("evicted_ip", evicted.ip),
+					slog.Int("max_entries", rl.maxEntries),
+				)
+			}
 		}
 	}
 
@@ -106,7 +118,7 @@ func (rl *ipRateLimiter) allow(ip string) bool {
 }
 
 func (rl *ipRateLimiter) cleanupLoop(ctx context.Context) {
-	ticker := time.NewTicker(10 * time.Minute)
+	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 
 	for {
@@ -115,13 +127,18 @@ func (rl *ipRateLimiter) cleanupLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			rl.mu.Lock()
-			cutoff := time.Now().Add(-1 * time.Hour)
+			cutoff := time.Now().Add(-staleEntryCutoff)
 			// Iterate the entire list — MoveToFront provides approximate ordering
 			// but does not guarantee strict lastSeen order, so breaking early could
 			// miss stale entries positioned before recently-seen ones.
 			for elem := rl.order.Back(); elem != nil; {
-				entry := elem.Value.(*ipEntry)
 				prev := elem.Prev()
+				entry, ok := elem.Value.(*ipEntry)
+				if !ok {
+					rl.logger.Error("rate limiter cleanup: unexpected type in list element")
+					elem = prev
+					continue
+				}
 				if entry.lastSeen.Before(cutoff) {
 					rl.order.Remove(elem)
 					delete(rl.limiters, entry.ip)

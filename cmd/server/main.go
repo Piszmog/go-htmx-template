@@ -16,6 +16,8 @@ import (
 	"go-htmx-template/internal/server/router"
 )
 
+const defaultRateLimit = 100
+
 var errInvalidRateLimit = errors.New("invalid RATE_LIMIT value")
 
 func main() {
@@ -31,11 +33,7 @@ func main() {
 }
 
 func run(logger *slog.Logger) error {
-	dbURL := os.Getenv("DB_URL")
-	if dbURL == "" {
-		dbURL = "./db.sqlite3"
-	}
-	database, err := db.New(logger, dbURL)
+	database, err := openDatabase()
 	if err != nil {
 		return err
 	}
@@ -49,18 +47,10 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	rateLimit := 50
-	if rateLimitStr := os.Getenv("RATE_LIMIT"); rateLimitStr != "" {
-		parsed, err := strconv.Atoi(rateLimitStr)
-		if err != nil || parsed <= 0 {
-			return fmt.Errorf("%w: %s", errInvalidRateLimit, rateLimitStr)
-		}
-		rateLimit = parsed
+	port := envOrDefault("PORT", "8080")
+	rateLimit, err := parseRateLimit()
+	if err != nil {
+		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -73,4 +63,28 @@ func run(logger *slog.Logger) error {
 	)
 
 	return svr.StartAndWait()
+}
+
+func openDatabase() (db.Database, error) {
+	url := envOrDefault("DB_URL", "./db.sqlite3")
+	return db.New(url)
+}
+
+func parseRateLimit() (int, error) {
+	rateLimitStr := os.Getenv("RATE_LIMIT")
+	if rateLimitStr == "" {
+		return defaultRateLimit, nil
+	}
+	parsed, err := strconv.Atoi(rateLimitStr)
+	if err != nil || parsed <= 0 {
+		return 0, fmt.Errorf("%w: %s", errInvalidRateLimit, rateLimitStr)
+	}
+	return parsed, nil
+}
+
+func envOrDefault(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
 }

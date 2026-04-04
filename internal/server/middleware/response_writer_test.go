@@ -1,6 +1,7 @@
 package middleware_test
 
 import (
+	"context"
 	"bytes"
 	"log/slog"
 	"net/http"
@@ -18,14 +19,14 @@ func loggingRig(t *testing.T) (middleware.Handler, *bytes.Buffer) {
 	t.Helper()
 	var buf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	return middleware.Logging(logger, middleware.IPConfig{}), &buf
+	return middleware.Logging(logger, middleware.IPConfig{TrustProxyHeaders: false}), &buf
 }
 
 func TestResponseWriter_DefaultStatusCode(t *testing.T) {
 	t.Parallel()
 	lm, logBuf := loggingRig(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// write nothing — responseWriter default is 200
@@ -39,7 +40,7 @@ func TestResponseWriter_WriteHeaderCapturesCode(t *testing.T) {
 	t.Parallel()
 	lm, logBuf := loggingRig(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -53,7 +54,7 @@ func TestResponseWriter_WriteHeaderIsIdempotent(t *testing.T) {
 	t.Parallel()
 	lm, logBuf := loggingRig(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -69,7 +70,7 @@ func TestResponseWriter_WriteCountsBytesAcrossMultipleCalls(t *testing.T) {
 	t.Parallel()
 	lm, logBuf := loggingRig(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("Hello"))
@@ -86,7 +87,7 @@ func TestResponseWriter_WriteImplicitlyCallsWriteHeader(t *testing.T) {
 	t.Parallel()
 	lm, logBuf := loggingRig(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, err := w.Write([]byte("body")) // no explicit WriteHeader call
@@ -101,7 +102,7 @@ func TestResponseWriter_UnwrapReturnsUnderlying(t *testing.T) {
 	t.Parallel()
 	lm, _ := loggingRig(t)
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	lm(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// http.NewResponseController calls Unwrap() to find Flush on the

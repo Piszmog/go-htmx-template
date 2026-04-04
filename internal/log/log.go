@@ -49,8 +49,7 @@ const (
 	LevelError Level = "error"
 )
 
-// ToLevel converts the level to Level.
-func ToLevel(level string) Level {
+func toLevel(level string) Level {
 	switch level {
 	case "debug":
 		return LevelDebug
@@ -68,7 +67,7 @@ func ToLevel(level string) Level {
 // GetLevel returns the log level from the environment variable.
 func GetLevel() Level {
 	level := os.Getenv("LOG_LEVEL")
-	return ToLevel(level)
+	return toLevel(level)
 }
 
 // Output represents the log output.
@@ -81,8 +80,7 @@ const (
 	OutputText Output = "text"
 )
 
-// ToOutput converts the output to Output.
-func ToOutput(output string) Output {
+func toOutput(output string) Output {
 	switch output {
 	case "json":
 		return OutputJSON
@@ -96,5 +94,5 @@ func ToOutput(output string) Output {
 // GetOutput returns the log output from the environment variable.
 func GetOutput() Output {
 	output := os.Getenv("LOG_OUTPUT")
-	return ToOutput(output)
+	return toOutput(output)
 }

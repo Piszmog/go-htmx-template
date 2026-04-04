@@ -33,6 +33,8 @@ func (rw *responseWriter) WriteHeader(statusCode int) {
 }
 
 // Write captures bytes written and calls underlying Write.
+//
+//nolint:wrapcheck // proxying the underlying writer; wrapping adds no value
 func (rw *responseWriter) Write(b []byte) (int, error) {
 	if !rw.wroteHeader {
 		rw.WriteHeader(http.StatusOK)
