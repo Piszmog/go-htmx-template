@@ -22,7 +22,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// global variables, can be used in any tests
+// global variables, can be used in any tests.
 var (
 	pw          *playwright.Playwright
 	browser     playwright.Browser
@@ -33,6 +33,7 @@ var (
 	browserName = getBrowserName()
 	browserType playwright.BrowserType
 	app         *exec.Cmd
+	appBinary   string
 	baseURL     *url.URL
 )
 
@@ -87,7 +88,11 @@ func beforeAll() {
 		log.Fatalf("could not build CSS: %v", err)
 	}
 
-	// start app
+	if err = buildApp(); err != nil {
+		log.Fatalf("could not build app: %v", err)
+	}
+
+	// start app.
 	if err = startApp(); err != nil {
 		log.Fatalf("could not start app: %v", err)
 	}
@@ -99,6 +104,22 @@ func beforeAll() {
 	if err = seedDB(); err != nil {
 		log.Fatalf("could not seed db: %v", err)
 	}
+}
+
+func buildApp() error {
+	f, err := os.CreateTemp("", "go-htmx-template-*")
+	if err != nil {
+		return fmt.Errorf("creating temp file: %w", err)
+	}
+	f.Close()
+	appBinary = f.Name()
+
+	cmd := exec.Command("go", "build", "-o", appBinary, "./cmd/server")
+	cmd.Dir = "../"
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("go build: %w\n%s", err, out)
+	}
+	return nil
 }
 
 func buildCSS() error {
@@ -119,7 +140,7 @@ func startApp() error {
 		return fmt.Errorf("getting free port: %w", err)
 	}
 
-	app = exec.Command("go", "run", "./cmd/server")
+	app = exec.Command(appBinary)
 	app.Dir = "../"
 	app.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	app.Env = append(
@@ -253,6 +274,9 @@ func afterAll() {
 		if err := syscall.Kill(-app.Process.Pid, syscall.SIGKILL); err != nil {
 			fmt.Println(err)
 		}
+	}
+	if appBinary != "" {
+		os.Remove(appBinary) //nolint:errcheck
 	}
 	if err := pw.Stop(); err != nil {
 		log.Fatalf("could not stop Playwright: %v", err)
