@@ -14,10 +14,7 @@ import (
 
 // New creates a new router with the given context, logger, database, and rate limit.
 func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLimit int) http.Handler {
-	h := &handler.Handler{
-		Logger:   logger,
-		Database: database,
-	}
+	h := handler.New(logger, database)
 
 	ipCfg := middleware.IPConfig{
 		TrustProxyHeaders: version.Value != "dev",
@@ -32,16 +29,18 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLim
 	mux.HandleFunc(newPath(http.MethodPost, "/count"), h.Count)
 
 	// Middleware chain
-	handler := http.Handler(mux)
-	handler = middleware.Chain(
-		middleware.Recovery(logger),
+	hdlr := http.Handler(mux)
+	hdlr = middleware.Chain(
+		middleware.Recovery(logger, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
+		})),
 		middleware.Logging(logger, ipCfg),
 		middleware.Security(logger, ipCfg),
 		middleware.RateLimit(ctx, logger, rateLimit, middleware.DefaultMaxEntries, ipCfg),
 		middleware.CSRF(logger, ipCfg),
-	)(handler)
+	)(hdlr)
 
-	return handler
+	return hdlr
 }
 
 func newPath(method string, path string) string {

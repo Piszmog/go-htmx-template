@@ -35,7 +35,7 @@ func TestSecurityHeaders(t *testing.T) {
 
 func TestCSRFProtection(t *testing.T) {
 	t.Run("same-origin GET allowed", func(t *testing.T) {
-		beforeEach(t)
+		_, page := beforeEach(t)
 
 		_, err := page.Goto(baseURL.String())
 		require.NoError(t, err)

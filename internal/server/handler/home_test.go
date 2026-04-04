@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -15,16 +16,14 @@ import (
 )
 
 func newHomeHandler() *handler.Handler {
-	return &handler.Handler{
-		Logger: slog.New(slog.DiscardHandler),
-	}
+	return handler.New(slog.New(slog.DiscardHandler), nil)
 }
 
 func TestHome_StatusCode(t *testing.T) {
 	t.Parallel()
 
 	h := newHomeHandler()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	h.Home(rec, req)
@@ -36,7 +35,7 @@ func TestHome_ContentType(t *testing.T) {
 	t.Parallel()
 
 	h := newHomeHandler()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	h.Home(rec, req)
@@ -48,7 +47,7 @@ func TestHome_ContainsWelcomeText(t *testing.T) {
 	t.Parallel()
 
 	h := newHomeHandler()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 
 	h.Home(rec, req)
@@ -60,7 +59,7 @@ func TestCount_StatusCode(t *testing.T) {
 	t.Parallel()
 
 	h := newHomeHandler()
-	req := httptest.NewRequest(http.MethodPost, "/count", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", nil)
 	rec := httptest.NewRecorder()
 
 	h.Count(rec, req)
@@ -72,7 +71,7 @@ func TestCount_ContentType(t *testing.T) {
 	t.Parallel()
 
 	h := newHomeHandler()
-	req := httptest.NewRequest(http.MethodPost, "/count", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", nil)
 	rec := httptest.NewRecorder()
 
 	h.Count(rec, req)
@@ -84,7 +83,7 @@ func TestCount_ContainsCounterFragment(t *testing.T) {
 	t.Parallel()
 
 	h := newHomeHandler()
-	req := httptest.NewRequest(http.MethodPost, "/count", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", nil)
 	rec := httptest.NewRecorder()
 
 	h.Count(rec, req)
@@ -98,11 +97,11 @@ func TestCount_ContainsCounterFragment(t *testing.T) {
 func TestCount_IncrementsOnEachCall(t *testing.T) {
 	h := newHomeHandler()
 
-	req1 := httptest.NewRequest(http.MethodPost, "/count", nil)
+	req1 := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", nil)
 	rec1 := httptest.NewRecorder()
 	h.Count(rec1, req1)
 
-	req2 := httptest.NewRequest(http.MethodPost, "/count", nil)
+	req2 := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", nil)
 	rec2 := httptest.NewRecorder()
 	h.Count(rec2, req2)
 

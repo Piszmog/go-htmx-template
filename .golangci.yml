@@ -3,29 +3,39 @@ linters:
   default: all
   disable:
     - canonicalheader
-    - cyclop
     - depguard
     - dupl
     - exhaustruct
-    - forcetypeassert
-    - funlen
-    - gochecknoglobals
-    - gocognit
-    - godot
     - gocyclo
-    - ireturn
     - lll
     - maintidx
-    - mnd
     - nlreturn
     - noinlineerr
     - revive
     - varnamelen
-    - wrapcheck
     - wsl
     - wsl_v5
+  exclusions:
+    rules:
+      - path: "_test\\.go"
+        linters:
+          - funlen
+          - maintidx
+          - err113
+          - gochecknoglobals
   settings:
+    ireturn:
+      allow:
+        - error
+        - empty
+        - anon
+        - stdlib
+        - github.com/a-h/templ.Component
+        - go-htmx-template/internal/db.Database
     tagliatelle:
       case:
         rules:
           json: snake
+    wrapcheck:
+      ignore-package-globs:
+        - go-htmx-template/internal/*

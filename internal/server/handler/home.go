@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 )
 
-var counter atomic.Int64
+var counter atomic.Int64 //nolint:gochecknoglobals // demo counter for template
 
 // Home handles the home page.
 func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {

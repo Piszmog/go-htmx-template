@@ -1,6 +1,7 @@
 package middleware_test
 
 import (
+	"context"
 	"bytes"
 	"log/slog"
 	"net/http"
@@ -113,7 +114,7 @@ func TestLogging_Middleware(t *testing.T) {
 
 			mw := middleware.Logging(logger, devIPConfig)(tt.handler)
 
-			req := httptest.NewRequest(tt.method, tt.path, nil)
+			req := httptest.NewRequestWithContext(context.Background(), tt.method, tt.path, nil)
 			if tt.remoteAddr != "" {
 				req.RemoteAddr = tt.remoteAddr
 			}
@@ -145,7 +146,7 @@ func TestLogging_NoLogWhenNotDebugLevel(t *testing.T) {
 
 	mw := middleware.Logging(logger, devIPConfig)(handler)
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", nil)
 	rec := httptest.NewRecorder()
 
 	mw.ServeHTTP(rec, req)

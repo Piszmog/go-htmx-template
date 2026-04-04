@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/playwright-community/playwright-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,7 +15,7 @@ import (
 func TestCounter_RendersWithInitialValue(t *testing.T) {
 	// This test must run first in the E2E suite (counter_test.go is
 	// alphabetically first) before any test clicks the Increment button.
-	beforeEach(t)
+	_, page := beforeEach(t)
 
 	_, err := page.Goto(getFullPath("/"))
 	require.NoError(t, err)
@@ -23,12 +24,12 @@ func TestCounter_RendersWithInitialValue(t *testing.T) {
 }
 
 func TestCounter_IncrementViaHTMX(t *testing.T) {
-	beforeEach(t)
+	_, page := beforeEach(t)
 
 	_, err := page.Goto(getFullPath("/"))
 	require.NoError(t, err)
 
-	before := counterValue(t)
+	before := counterValue(t, page)
 
 	err = page.Locator(`button:has-text("Increment")`).Click()
 	require.NoError(t, err)
@@ -39,12 +40,12 @@ func TestCounter_IncrementViaHTMX(t *testing.T) {
 }
 
 func TestCounter_IncrementsMultipleTimes(t *testing.T) {
-	beforeEach(t)
+	_, page := beforeEach(t)
 
 	_, err := page.Goto(getFullPath("/"))
 	require.NoError(t, err)
 
-	before := counterValue(t)
+	before := counterValue(t, page)
 
 	incrementBtn := page.Locator(`button:has-text("Increment")`)
 	for range 3 {
@@ -57,7 +58,7 @@ func TestCounter_IncrementsMultipleTimes(t *testing.T) {
 }
 
 // counterValue reads the current counter value from the rendered page.
-func counterValue(t *testing.T) int {
+func counterValue(t *testing.T, page playwright.Page) int {
 	t.Helper()
 	text, err := page.Locator(`#counter p`).InnerText()
 	require.NoError(t, err, "could not read counter element text")

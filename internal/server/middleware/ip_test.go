@@ -1,6 +1,7 @@
 package middleware_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,16 +25,19 @@ func TestGetClientIP_WithoutProxyHeaders(t *testing.T) {
 		{
 			name:       "RemoteAddr with port",
 			remoteAddr: "192.168.1.1:12345",
+			headers:    nil,
 			expected:   "192.168.1.1",
 		},
 		{
 			name:       "RemoteAddr without port",
 			remoteAddr: "192.168.1.1",
+			headers:    nil,
 			expected:   "192.168.1.1",
 		},
 		{
 			name:       "RemoteAddr IPv6 with port",
 			remoteAddr: "[::1]:8080",
+			headers:    nil,
 			expected:   "::1",
 		},
 		{
@@ -60,7 +64,7 @@ func TestGetClientIP_WithoutProxyHeaders(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.RemoteAddr = tt.remoteAddr
 			for k, v := range tt.headers {
 				req.Header.Set(k, v)
@@ -167,6 +171,7 @@ func TestGetClientIP_WithProxyHeaders(t *testing.T) {
 		{
 			name:       "falls back to RemoteAddr when no proxy headers",
 			remoteAddr: "10.0.0.1:12345",
+			headers:    nil,
 			expected:   "10.0.0.1",
 		},
 	}
@@ -175,7 +180,7 @@ func TestGetClientIP_WithProxyHeaders(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.RemoteAddr = tt.remoteAddr
 			for k, v := range tt.headers {
 				req.Header.Set(k, v)

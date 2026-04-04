@@ -1,8 +1,10 @@
 package handler_test
 
 import (
+	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -59,8 +61,8 @@ func TestHealth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := &handler.Handler{}
-			req := httptest.NewRequest(http.MethodGet, "/health", nil)
+			h := handler.New(slog.New(slog.DiscardHandler), nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)
 			rec := httptest.NewRecorder()
 
 			h.Health(rec, req)
@@ -73,12 +75,9 @@ func TestHealth(t *testing.T) {
 func TestHealth_NoDatabase(t *testing.T) {
 	t.Parallel()
 	// Handler with nil Database should still work for health check
-	h := &handler.Handler{
-		Logger:   nil,
-		Database: nil,
-	}
+	h := handler.New(nil, nil)
 
-	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 
 	// Should not panic or error even without database
@@ -91,11 +90,11 @@ func TestHealth_NoDatabase(t *testing.T) {
 
 func TestHealth_MultipleRequests(t *testing.T) {
 	t.Parallel()
-	h := &handler.Handler{}
+	h := handler.New(slog.New(slog.DiscardHandler), nil)
 
 	// Health endpoint should be idempotent
 	for range 5 {
-		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)
 		rec := httptest.NewRecorder()
 
 		h.Health(rec, req)

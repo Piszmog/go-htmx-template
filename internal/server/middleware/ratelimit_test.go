@@ -1,6 +1,7 @@
 package middleware_test
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -21,7 +22,7 @@ func newHandler(t *testing.T, rpm, maxEntries int) http.Handler {
 }
 
 func request(handler http.Handler, ip string) int {
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	req.RemoteAddr = ip + ":9999"
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
