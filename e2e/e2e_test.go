@@ -148,6 +148,7 @@ func startApp() error {
 		"DB_URL=./test-db.sqlite3",
 		fmt.Sprintf("PORT=%d", port),
 		"LOG_LEVEL=DEBUG",
+		"RATE_LIMIT=50",
 	)
 
 	baseURL, err = url.Parse(fmt.Sprintf("http://localhost:%d", port))

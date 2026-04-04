@@ -16,7 +16,7 @@ import (
 	"go-htmx-template/internal/server/router"
 )
 
-const defaultRateLimit = 100
+const defaultRateLimit = 50
 
 var errInvalidRateLimit = errors.New("invalid RATE_LIMIT value")
 
