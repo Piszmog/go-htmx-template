@@ -15,7 +15,8 @@ import (
 func TestCounter_RendersWithInitialValue(t *testing.T) {
 	// This test must run first in the E2E suite (counter_test.go is
 	// alphabetically first) before any test clicks the Increment button.
-	_, page := beforeEach(t)
+	// Not parallel: these three counter tests share DB state and must run in order.
+	_, page := newPage(t)
 
 	_, err := page.Goto(getFullPath("/"))
 	require.NoError(t, err)
@@ -24,7 +25,7 @@ func TestCounter_RendersWithInitialValue(t *testing.T) {
 }
 
 func TestCounter_IncrementViaHTMX(t *testing.T) {
-	_, page := beforeEach(t)
+	_, page := newPage(t)
 
 	_, err := page.Goto(getFullPath("/"))
 	require.NoError(t, err)
@@ -40,7 +41,7 @@ func TestCounter_IncrementViaHTMX(t *testing.T) {
 }
 
 func TestCounter_IncrementsMultipleTimes(t *testing.T) {
-	_, page := beforeEach(t)
+	_, page := newPage(t)
 
 	_, err := page.Goto(getFullPath("/"))
 	require.NoError(t, err)

@@ -12,6 +12,7 @@ import (
 )
 
 func TestNavigation_404ForUnknownRoutes(t *testing.T) {
+	t.Parallel()
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	resp, err := client.Get(getFullPath("/nonexistent"))

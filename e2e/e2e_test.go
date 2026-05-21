@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -32,21 +33,100 @@ var (
 	isWebKit    bool
 	browserName = getBrowserName()
 	browserType playwright.BrowserType
-	app         *exec.Cmd
-	appBinary   string
-	baseURL     *url.URL
+	app            *exec.Cmd
+	baseURL        *url.URL
+	rateLimitApp   *exec.Cmd
+	rateLimitURL   string
 )
 
-// defaultContextOptions for most tests
+// defaultContextOptions for most tests.
 var defaultContextOptions = playwright.BrowserNewContextOptions{
 	AcceptDownloads: playwright.Bool(true),
 	HasTouch:        playwright.Bool(true),
+}
+
+// serverLog buffers lines from the app server's stdout/stderr.
+// Lines are only printed when the test suite fails, keeping passing runs quiet.
+type serverLog struct {
+	mu    sync.Mutex
+	lines []string
+}
+
+func (s *serverLog) append(line string) {
+	s.mu.Lock()
+	s.lines = append(s.lines, line)
+	s.mu.Unlock()
+}
+
+func (s *serverLog) dump() {
+	s.mu.Lock()
+	lines := make([]string, len(s.lines))
+	copy(lines, s.lines)
+	s.mu.Unlock()
+	for _, line := range lines {
+		fmt.Println(line)
+	}
+}
+
+var srvLog serverLog
+
+// scannerWg tracks all running pipe-scanner goroutines so TestMain can wait for them
+// to finish draining before calling srvLog.dump().
+var scannerWg sync.WaitGroup
+
+// pipeToLog reads lines from r and buffers them into srvLog prefixed with [tag].
+func pipeToLog(r io.Reader, tag string) {
+	scannerWg.Add(1)
+	go func() {
+		defer scannerWg.Done()
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			srvLog.append("[" + tag + "] " + scanner.Text())
+		}
+		if err := scanner.Err(); err != nil {
+			srvLog.append("[" + tag + "-ERR] " + err.Error())
+		}
+	}()
+}
+
+// startWithPipes wires stdout and stderr pipes to srvLog then starts cmd.
+func startWithPipes(cmd *exec.Cmd, stdoutTag, stderrTag string) error {
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	pipeToLog(stdout, stdoutTag)
+	pipeToLog(stderr, stderrTag)
+	return nil
+}
+
+// killAndWait sends SIGKILL to the process group of cmd and reaps the process.
+func killAndWait(cmd *exec.Cmd) {
+	if cmd == nil || cmd.Process == nil {
+		return
+	}
+	if err := syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL); err != nil {
+		fmt.Println(err)
+	}
+	_ = cmd.Wait()
 }
 
 func TestMain(m *testing.M) {
 	beforeAll()
 	code := m.Run()
 	afterAll()
+	scannerWg.Wait()
+	if code != 0 {
+		fmt.Println("=== Server logs (dumped due to test failure) ===")
+		srvLog.dump()
+	}
 	os.Exit(code)
 }
 
@@ -78,8 +158,8 @@ func beforeAll() {
 	if err != nil {
 		log.Fatalf("could not launch: %v", err)
 	}
-	// init web-first assertions with 3s timeout instead of default 5s
-	expect = playwright.NewPlaywrightAssertions(3000)
+	// init web-first assertions with 5s timeout; 3s was too tight under parallel test load
+	expect = playwright.NewPlaywrightAssertions(5000)
 	isChromium = browserName == "chromium" || browserName == ""
 	isFirefox = browserName == "firefox"
 	isWebKit = browserName == "webkit"
@@ -88,11 +168,11 @@ func beforeAll() {
 		log.Fatalf("could not build CSS: %v", err)
 	}
 
+	// build app binary once, reused by startApp and startRateLimitApp
 	if err = buildApp(); err != nil {
 		log.Fatalf("could not build app: %v", err)
 	}
 
-	// start app.
 	if err = startApp(); err != nil {
 		log.Fatalf("could not start app: %v", err)
 	}
@@ -104,18 +184,19 @@ func beforeAll() {
 	if err = seedDB(); err != nil {
 		log.Fatalf("could not seed db: %v", err)
 	}
+
+	if err = startRateLimitApp(); err != nil {
+		log.Fatalf("could not start rate limit test app: %v", err)
+	}
 }
 
 func buildApp() error {
-	f, err := os.CreateTemp("", "go-htmx-template-*")
-	if err != nil {
-		return fmt.Errorf("creating temp file: %w", err)
+	if err := os.MkdirAll("../tmp", 0750); err != nil {
+		return fmt.Errorf("mkdir tmp: %w", err)
 	}
-	f.Close()
-	appBinary = f.Name()
-
-	cmd := exec.Command("go", "build", "-o", appBinary, "./cmd/server")
+	cmd := exec.Command("go", "build", "-o", "./tmp/e2e-server", "./cmd/server")
 	cmd.Dir = "../"
+	cmd.Env = os.Environ()
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("go build: %w\n%s", err, out)
 	}
@@ -128,6 +209,7 @@ func buildCSS() error {
 		"-o", "./internal/dist/assets/css/output@dev.css",
 	)
 	cmd.Dir = "../"
+	cmd.Env = os.Environ()
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("go-tw: %w\n%s", err, out)
 	}
@@ -135,12 +217,9 @@ func buildCSS() error {
 }
 
 func startApp() error {
-	port, err := getFreePort()
-	if err != nil {
-		return fmt.Errorf("getting free port: %w", err)
-	}
+	port := getPort()
 
-	app = exec.Command(appBinary)
+	app = exec.Command("./tmp/e2e-server")
 	app.Dir = "../"
 	app.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	app.Env = append(
@@ -148,56 +227,44 @@ func startApp() error {
 		"DB_URL=./test-db.sqlite3",
 		fmt.Sprintf("PORT=%d", port),
 		"LOG_LEVEL=DEBUG",
-		"RATE_LIMIT=50",
+		"RATE_LIMIT=1000000",
 	)
 
+	var err error
 	baseURL, err = url.Parse(fmt.Sprintf("http://localhost:%d", port))
 	if err != nil {
 		return err
 	}
 
-	stdout, err := app.StdoutPipe()
-	if err != nil {
+	if err := startWithPipes(app, "STDOUT", "STDERR"); err != nil {
 		return err
 	}
-	stderr, err := app.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	if err = app.Start(); err != nil {
-		return err
-	}
-	fmt.Printf("Started app on port %d, pid %d", port, app.Process.Pid)
-
-	stdoutchan := make(chan string)
-	stderrchan := make(chan string)
-	go func() {
-		defer close(stdoutchan)
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			stdoutchan <- scanner.Text()
-		}
-	}()
-	go func() {
-		defer close(stderrchan)
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			stderrchan <- scanner.Text()
-		}
-	}()
-
-	go func() {
-		for line := range stdoutchan {
-			fmt.Println("[STDOUT]", line)
-		}
-	}()
-	go func() {
-		for line := range stderrchan {
-			fmt.Println("[STDERR]", line)
-		}
-	}()
+	fmt.Printf("Started app on port %d, pid %d\n", port, app.Process.Pid)
 	return nil
+}
+
+// startRateLimitApp starts a dedicated server with a low rate limit for use by
+// rate-limiting tests. This keeps the main test server's bucket clean so
+// unrelated tests are never unexpectedly throttled.
+func startRateLimitApp() error {
+	port := getPort()
+	rateLimitApp = exec.Command("./tmp/e2e-server")
+	rateLimitApp.Dir = "../"
+	rateLimitApp.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	rateLimitApp.Env = append(
+		os.Environ(),
+		"DB_URL=./test-rl-db.sqlite3",
+		fmt.Sprintf("PORT=%d", port),
+		"LOG_LEVEL=ERROR",
+		"RATE_LIMIT=30",
+	)
+
+	if err := startWithPipes(rateLimitApp, "RL-STDOUT", "RL-STDERR"); err != nil {
+		return err
+	}
+
+	rateLimitURL = fmt.Sprintf("http://localhost:%d", port)
+	return waitForHealthCheck(rateLimitURL)
 }
 
 // waitForHealthCheck polls the /health endpoint until it responds successfully.
@@ -209,7 +276,7 @@ func waitForHealthCheck(baseURL string) error {
 	defer ticker.Stop()
 
 	client := &http.Client{
-		Timeout: 500 * time.Millisecond, // Each request times out after 500ms
+		Timeout: 500 * time.Millisecond,
 	}
 
 	for {
@@ -219,7 +286,6 @@ func waitForHealthCheck(baseURL string) error {
 		case <-ticker.C:
 			resp, err := client.Get(healthURL)
 			if err != nil {
-				// Network error or app not ready, continue polling
 				continue
 			}
 
@@ -230,7 +296,6 @@ func waitForHealthCheck(baseURL string) error {
 					continue
 				}
 
-				// Verify expected response (contains "version" field with JSON)
 				bodyStr := string(body)
 				if strings.Contains(bodyStr, `"version"`) && strings.Contains(bodyStr, `"dev"`) {
 					fmt.Println("✓ App health check passed")
@@ -260,41 +325,68 @@ func seedDB() error {
 	return nil
 }
 
-func getFreePort() (int, error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return 0, err
+// chromiumBlockedPorts lists ports that Chromium refuses to connect to.
+// See https://fetch.spec.whatwg.org/#bad-port
+var chromiumBlockedPorts = map[int]bool{
+	3659: true, 4045: true, 4190: true, 4444: true, 4445: true,
+	4782: true, 4783: true, 6000: true, 6001: true, 6002: true,
+	6003: true, 6004: true, 6005: true, 6006: true, 6007: true,
+	6008: true, 6009: true, 6010: true, 6011: true, 6012: true,
+	6013: true, 6014: true, 6015: true, 6016: true, 6017: true,
+	6018: true, 6019: true, 6020: true, 6021: true, 6022: true,
+	6023: true, 6024: true, 6025: true, 6026: true, 6027: true,
+	6028: true, 6029: true, 6030: true, 6031: true, 6032: true,
+	6033: true, 6034: true, 6035: true, 6036: true, 6037: true,
+	6038: true, 6039: true, 6040: true, 6041: true, 6042: true,
+	6043: true, 6044: true, 6045: true, 6046: true, 6047: true,
+	6048: true, 6049: true, 6050: true, 6051: true, 6052: true,
+	6053: true, 6054: true, 6055: true, 6056: true, 6057: true,
+	6058: true, 6059: true, 6060: true, 6061: true, 6062: true,
+	6063: true, 6566: true, 6665: true, 6666: true, 6667: true,
+	6668: true, 6669: true, 6679: true, 6697: true,
+}
+
+// getPort returns a free port that is not on Chromium's blocked-port list.
+func getPort() int {
+	for {
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			log.Fatalf("could not find free port: %v", err)
+		}
+		port := l.Addr().(*net.TCPAddr).Port
+		l.Close()
+		if !chromiumBlockedPorts[port] {
+			return port
+		}
 	}
-	defer ln.Close()
-	return ln.Addr().(*net.TCPAddr).Port, nil
 }
 
 // afterAll does cleanup, e.g. stop playwright driver
 func afterAll() {
-	if app != nil && app.Process != nil {
-		if err := syscall.Kill(-app.Process.Pid, syscall.SIGKILL); err != nil {
-			fmt.Println(err)
-		}
-	}
-	if appBinary != "" {
-		os.Remove(appBinary) //nolint:errcheck
-	}
+	killAndWait(app)
+	killAndWait(rateLimitApp)
 	if err := pw.Stop(); err != nil {
 		log.Fatalf("could not stop Playwright: %v", err)
 	}
 	if err := os.Remove("../test-db.sqlite3"); err != nil {
 		log.Fatalf("could not remove test-db.sqlite3: %v", err)
 	}
+	if err := os.Remove("../test-rl-db.sqlite3"); err != nil {
+		fmt.Println(err)
+	}
+	if err := os.Remove("../tmp/e2e-server"); err != nil {
+		fmt.Println(err)
+	}
 }
 
-// beforeEach creates a new browser context and page for each test,
+// newPage creates a new browser context and page for each test,
 // so each test has an isolated environment. Usage:
 //
 //	func TestFoo(t *testing.T) {
-//	  _, page := beforeEach(t)
+//	  _, page := newPage(t)
 //	  // your test code
 //	}
-func beforeEach(t *testing.T, contextOptions ...playwright.BrowserNewContextOptions) (playwright.BrowserContext, playwright.Page) {
+func newPage(t *testing.T, contextOptions ...playwright.BrowserNewContextOptions) (playwright.BrowserContext, playwright.Page) {
 	t.Helper()
 	opt := defaultContextOptions
 	if len(contextOptions) == 1 {
@@ -332,7 +424,7 @@ func newBrowserContextAndPage(t *testing.T, options playwright.BrowserNewContext
 func getFullPath(relativePath string) string {
 	ref, err := url.Parse(relativePath)
 	if err != nil {
-		ref = &url.URL{Path: relativePath}
+		panic(err)
 	}
 	return baseURL.ResolveReference(ref).String()
 }

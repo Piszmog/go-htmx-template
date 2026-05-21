@@ -5,6 +5,7 @@ package e2e_test
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,7 +13,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var rateLimitMu sync.Mutex
+
 func TestSecurityHeaders(t *testing.T) {
+	t.Parallel()
+
 	resp, err := http.Get(baseURL.String())
 	require.NoError(t, err)
 	defer resp.Body.Close()
@@ -34,8 +39,10 @@ func TestSecurityHeaders(t *testing.T) {
 }
 
 func TestCSRFProtection(t *testing.T) {
+	t.Parallel()
+
 	t.Run("same-origin GET allowed", func(t *testing.T) {
-		_, page := beforeEach(t)
+		_, page := newPage(t)
 
 		_, err := page.Goto(baseURL.String())
 		require.NoError(t, err)
@@ -76,13 +83,17 @@ func TestCSRFProtection(t *testing.T) {
 }
 
 func TestRateLimiting(t *testing.T) {
+	t.Parallel()
+	rateLimitMu.Lock()
+	defer rateLimitMu.Unlock()
+
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	rateLimitHit := false
 	var lastStatusCode int
 
 	for range 60 {
-		resp, err := client.Get(baseURL.String() + "/health")
+		resp, err := client.Get(rateLimitURL + "/health")
 		require.NoError(t, err)
 		lastStatusCode = resp.StatusCode
 
@@ -106,19 +117,19 @@ func TestRateLimiting(t *testing.T) {
 }
 
 func TestRateLimitingIgnoresXForwardedForInDevMode(t *testing.T) {
+	t.Parallel()
+	rateLimitMu.Lock()
+	defer rateLimitMu.Unlock()
+
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	// In dev mode, X-Forwarded-For is ignored. Sending requests with
 	// different X-Forwarded-For values should still hit the same rate
 	// limit bucket because the server uses RemoteAddr instead.
-	//
-	// Note: This test may run after TestRateLimiting, so the bucket for
-	// 127.0.0.1 may already be partially or fully exhausted. We just need
-	// to verify that spoofing X-Forwarded-For does NOT prevent rate limiting.
 	rateLimitHit := false
 
 	for i := range 60 {
-		req, err := http.NewRequest("GET", baseURL.String()+"/health", nil)
+		req, err := http.NewRequest("GET", rateLimitURL+"/health", nil)
 		require.NoError(t, err)
 
 		// Each request pretends to come from a different IP via
@@ -143,6 +154,8 @@ func TestRateLimitingIgnoresXForwardedForInDevMode(t *testing.T) {
 }
 
 func TestServerTimeouts(t *testing.T) {
+	t.Parallel()
+
 	time.Sleep(2 * time.Second)
 
 	resp, err := http.Get(baseURL.String() + "/health")

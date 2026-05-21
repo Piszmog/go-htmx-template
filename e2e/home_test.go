@@ -8,7 +8,8 @@ import (
 )
 
 func TestHome(t *testing.T) {
-	_, page := beforeEach(t)
+	t.Parallel()
+	_, page := newPage(t)
 	_, err := page.Goto(getFullPath(""))
 	require.NoError(t, err)
 
