@@ -15,6 +15,7 @@ linters:
     - varnamelen
     - wsl
     - wsl_v5
+    - gomodguard
   exclusions:
     rules:
       - path: "_test\\.go"
@@ -23,6 +24,7 @@ linters:
           - maintidx
           - err113
           - gochecknoglobals
+          - goconst
   settings:
     ireturn:
       allow:
