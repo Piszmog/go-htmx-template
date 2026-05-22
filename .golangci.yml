@@ -5,6 +5,7 @@ linters:
     - canonicalheader
     - depguard
     - dupl
+    - exhaustruct
     - gocyclo
     - lll
     - maintidx
