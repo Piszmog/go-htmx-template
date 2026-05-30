@@ -104,8 +104,8 @@ github.com/pingcap/failpoint v0.0.0-20260521055755-e7642935314f h1:cDo4qNgaQc2PO
 github.com/pingcap/failpoint v0.0.0-20260521055755-e7642935314f/go.mod h1:jimwlLpI/XtwQdlZML15HS+j4rirvwZM0GLY07wwgOo=
 github.com/pingcap/log v1.1.0 h1:ELiPxACz7vdo1qAvvaWJg1NrYFoY6gqAh/+Uo6aXdD8=
 github.com/pingcap/log v1.1.0/go.mod h1:DWQW5jICDR7UJh4HtxXSM20Churx4CQL0fwL/SoOSA4=
-github.com/pingcap/tidb/pkg/parser v0.0.0-20260529063824-1c3f9eb211a3 h1:c7yv8ijhjOBZRk135DLFIsOq5S6mD/NLPGPfwE5/qiQ=
-github.com/pingcap/tidb/pkg/parser v0.0.0-20260529063824-1c3f9eb211a3/go.mod h1:zDLDsfNBU5+L6T4J9/OgWAHc/WZvMUjbpgHqQ/t3yKo=
+github.com/pingcap/tidb/pkg/parser v0.0.0-20260530071132-351a32bd4ec7 h1:t6kmpbsk8WSD9RuL8BRVh6tBvi05vZvYx+OItw9Qz08=
+github.com/pingcap/tidb/pkg/parser v0.0.0-20260530071132-351a32bd4ec7/go.mod h1:zDLDsfNBU5+L6T4J9/OgWAHc/WZvMUjbpgHqQ/t3yKo=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/playwright-community/playwright-go v0.5700.1 h1:PNFb1byWqrTT720rEO0JL88C6Ju0EmUnR5deFLvtP/U=
 github.com/playwright-community/playwright-go v0.5700.1/go.mod h1:MlSn1dZrx8rszbCxY6x3qK89ZesJUYVx21B2JnkoNF0=
