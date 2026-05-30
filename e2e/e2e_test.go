@@ -26,18 +26,18 @@ import (
 
 // global variables, can be used in any tests.
 var (
-	pw          *playwright.Playwright
-	browser     playwright.Browser
-	expect      playwright.PlaywrightAssertions
-	isChromium  bool
-	isFirefox   bool
-	isWebKit    bool
-	browserName = getBrowserName()
-	browserType playwright.BrowserType
-	app            *exec.Cmd
-	baseURL        *url.URL
-	rateLimitApp   *exec.Cmd
-	rateLimitURL   string
+	pw           *playwright.Playwright
+	browser      playwright.Browser
+	expect       playwright.PlaywrightAssertions
+	isChromium   bool
+	isFirefox    bool
+	isWebKit     bool
+	browserName  = getBrowserName()
+	browserType  playwright.BrowserType
+	app          *exec.Cmd
+	baseURL      *url.URL
+	rateLimitApp *exec.Cmd
+	rateLimitURL string
 )
 
 // defaultContextOptions for most tests.
@@ -322,18 +322,9 @@ func migrateDB(dbRelPath string) error {
 	if err != nil {
 		return fmt.Errorf("resolve db path: %w", err)
 	}
-	migsDir, err := filepath.Abs("../internal/db/migrations")
-	if err != nil {
-		return fmt.Errorf("resolve migrations path: %w", err)
-	}
-	cmd := exec.Command("go", "run", "-tags", "sqlite",
-		"github.com/golang-migrate/migrate/v4/cmd/migrate",
-		"-source", "file://"+migsDir,
-		"-database", "sqlite://"+abs,
-		"up",
-	)
+	cmd := exec.Command("./migrate.sh", "-p", "sqlite", "-u", abs)
 	cmd.Dir = "../"
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
+	cmd.Env = os.Environ()
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("migrate %s: %w\n%s", dbRelPath, err, out)
 	}
