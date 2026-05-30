@@ -63,3 +63,4 @@ Temporary Items
 .apdisk
 /internal/db/queries/*.go
 goreleaser-dist
+*.sqlite3*

@@ -12,15 +12,15 @@ templ Page(count int) {
 }
 
 templ GreetButton() {
-	<script nonce={ templ.GetNonce(ctx) }>
-		function handleClick(el) {
-			alert(el.textContent + ' clicked');
-		}
-	</script>
-	<button onclick="handleClick(this)"
+	<button id="greet-button"
 		class="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600">
 		Greet
 	</button>
+	<script nonce={ templ.GetNonce(ctx) }>
+		document.getElementById('greet-button').addEventListener('click', function() {
+			alert(this.textContent.trim() + ' clicked');
+		});
+	</script>
 }
 
 templ Counter(count int) {
