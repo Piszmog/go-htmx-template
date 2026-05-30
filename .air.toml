@@ -29,6 +29,7 @@ tmp_dir = "tmp"
     "go tool templ generate -path ./internal/components",
     "go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css",
     "go tool sqlc generate",
+    "./migrate.sh -p sqlite -u \"${DB_URL:-./db.sqlite3}\"",
   ]
   rerun = true
   rerun_delay = 500

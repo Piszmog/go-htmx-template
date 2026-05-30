@@ -39,12 +39,12 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **Tailwind CSS**: `go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css`
 
 ### Database Migrations
-- **Create migration**: `migrate create -ext sql -dir internal/db/migrations <name>`
+- **Create migration**: `go run github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1 create -ext sql -dir internal/db/migrations <name>`
 - **Migration files**: Creates two files: `<timestamp>_<name>.up.sql` and `<timestamp>_<name>.down.sql`
 - **Up migrations**: Write schema changes in `.up.sql` (e.g., `CREATE TABLE`, `ALTER TABLE`)
 - **Down migrations**: Write rollback logic in `.down.sql` (e.g., `DROP TABLE`)
-- **Auto-run**: Migrations run automatically on app startup via `db.Migrate()` in `cmd/server/main.go`
-- **Manual run**: Not typically needed (app handles it), but available via golang-migrate CLI if needed
+- **Auto-run**: `air` runs `./migrate.sh` automatically on each rebuild (see `.air.toml` `pre_cmd`). The server itself does **not** migrate on startup.
+- **Manual run**: `./migrate.sh -p sqlite -u ./db.sqlite3` (up) or add `-d down -s 1` for rollback
 - **Migration naming**: Use descriptive names (e.g., `add_users_table`, `add_email_to_authors`)
 
 ### Dependencies
