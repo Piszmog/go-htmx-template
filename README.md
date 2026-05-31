@@ -35,7 +35,13 @@ go tool templ generate -path ./internal/components
 
 ## Run
 
-`air` is the primary way to run the applications for local development. It watches for file changes. When a file changes, it will rebuild and re-run the application.
+`air` is the primary way to run the applications for local development. It watches for file changes. When a file changes, it will rebuild and re-run the application. On each rebuild, `air` also applies any pending DB migrations via `./migrate.sh`.
+
+If running the binary directly (not via `air`), run migrations first:
+
+```shell
+./migrate.sh -p sqlite -u ./db.sqlite3
+```
 
 When the application is running, go to http://localhost:8080/
 
@@ -110,7 +116,7 @@ A few different technologies are configured to help getting off the ground easie
   - The script `upgrade_htmx.sh` is available to make upgrading easier
   - Already included in this template
 - [air](https://github.com/air-verse/air) for live reloading of the application.
-- [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
+- [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations (build/dev-time tool via `./migrate.sh`; not a runtime dependency of the server binary).
 - [playwright-go](https://github.com/playwright-community/playwright-go) for E2E testing.
 
 ## Security
@@ -249,6 +255,7 @@ Comprehensive security tests are included in `e2e/security_test.go`:
 │   └── input.css
 ├── go.mod
 ├── go.sum
+├── migrate.sh
 ├── sqlc.yml
 ├── update_module.sh
 └── upgrade_htmx.sh
@@ -275,12 +282,25 @@ This is where `templ` files live in `internal/components/`. Anything you want to
 This is the directory in `internal/db/` that `sqlc` generates to. Update `queries.sql` to build 
 your database operations.
 
-This project uses [golang migrate](https://github.com/golang-migrate/migrate) for DB 
-migrations. `sqlc` uses the `internal/db/migrations` directory to generate DB tables. `cmd/server/main.go` calls `db.Migrate(..)` to automatically migrate the DB. To add migration
-call the following command,
+This project uses [golang migrate](https://github.com/golang-migrate/migrate) for DB
+migrations. `sqlc` uses the `internal/db/migrations` directory to generate DB tables.
+
+Migrations are applied by `./migrate.sh` — **the server does not migrate on startup**.
+`air` runs `migrate.sh` automatically in dev. In production, run migrations before
+starting or restarting the server:
 
 ```shell
-migrate create -ext sql -dir internal/db/migrations <name of migration>
+./migrate.sh -p sqlite -u ./db.sqlite3
+```
+
+`migrate.sh` accepts `-p <protocol>`, `-u <url>`, `-d <direction>` (default: `up`),
+`-t <auth_token>`, and `-s <steps>` (for down). Run `./migrate.sh -h` for full usage.
+
+To create a new migration pair:
+
+```shell
+go run -tags sqlite github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1 \
+  create -ext sql -dir internal/db/migrations -seq <name>
 ```
 
 ### Dist

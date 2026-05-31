@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -25,18 +26,18 @@ import (
 
 // global variables, can be used in any tests.
 var (
-	pw          *playwright.Playwright
-	browser     playwright.Browser
-	expect      playwright.PlaywrightAssertions
-	isChromium  bool
-	isFirefox   bool
-	isWebKit    bool
-	browserName = getBrowserName()
-	browserType playwright.BrowserType
-	app            *exec.Cmd
-	baseURL        *url.URL
-	rateLimitApp   *exec.Cmd
-	rateLimitURL   string
+	pw           *playwright.Playwright
+	browser      playwright.Browser
+	expect       playwright.PlaywrightAssertions
+	isChromium   bool
+	isFirefox    bool
+	isWebKit     bool
+	browserName  = getBrowserName()
+	browserType  playwright.BrowserType
+	app          *exec.Cmd
+	baseURL      *url.URL
+	rateLimitApp *exec.Cmd
+	rateLimitURL string
 )
 
 // defaultContextOptions for most tests.
@@ -173,6 +174,10 @@ func beforeAll() {
 		log.Fatalf("could not build app: %v", err)
 	}
 
+	if err = migrateDB("../test-db.sqlite3"); err != nil {
+		log.Fatalf("could not migrate db: %v", err)
+	}
+
 	if err = startApp(); err != nil {
 		log.Fatalf("could not start app: %v", err)
 	}
@@ -183,6 +188,10 @@ func beforeAll() {
 
 	if err = seedDB(); err != nil {
 		log.Fatalf("could not seed db: %v", err)
+	}
+
+	if err = migrateDB("../test-rl-db.sqlite3"); err != nil {
+		log.Fatalf("could not migrate rate-limit db: %v", err)
 	}
 
 	if err = startRateLimitApp(); err != nil {
@@ -306,6 +315,20 @@ func waitForHealthCheck(baseURL string) error {
 			}
 		}
 	}
+}
+
+func migrateDB(dbRelPath string) error {
+	abs, err := filepath.Abs(dbRelPath)
+	if err != nil {
+		return fmt.Errorf("resolve db path: %w", err)
+	}
+	cmd := exec.Command("./migrate.sh", "-p", "sqlite", "-u", abs)
+	cmd.Dir = "../"
+	cmd.Env = os.Environ()
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("migrate %s: %w\n%s", dbRelPath, err, out)
+	}
+	return nil
 }
 
 func seedDB() error {

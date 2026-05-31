@@ -8,8 +8,6 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/golang-migrate/migrate/v4"
-
 	"go-htmx-template/internal/db"
 	"go-htmx-template/internal/log"
 	"go-htmx-template/internal/server"
@@ -42,10 +40,6 @@ func run(logger *slog.Logger) error {
 			logger.Error("failed to close the database", "error", cerr)
 		}
 	}()
-
-	if err = db.Migrate(database); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return err
-	}
 
 	port := envOrDefault("PORT", "8080")
 	rateLimit, err := parseRateLimit()
