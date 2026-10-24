@@ -36,8 +36,11 @@ func TestSecurity_StaticHeaders(t *testing.T) {
 
 	assert.Equal(t, "DENY", rec.Header().Get("X-Frame-Options"))
 	assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+	assert.Equal(t, "same-origin", rec.Header().Get("Cross-Origin-Opener-Policy"))
+	assert.Equal(t, "same-origin", rec.Header().Get("Cross-Origin-Resource-Policy"))
 	assert.Equal(t, "strict-origin-when-cross-origin", rec.Header().Get("Referrer-Policy"))
 	assert.Contains(t, rec.Header().Get("Permissions-Policy"), "geolocation=()")
+	assert.Equal(t, "none", rec.Header().Get("X-Permitted-Cross-Domain-Policies"))
 }
 
 func TestSecurity_CSPContainsNonce(t *testing.T) {

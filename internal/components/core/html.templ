@@ -16,6 +16,7 @@ templ head(title string) {
 		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 		<meta name="color-scheme" content="light dark"/>
 		<meta name="description" content="Hello world"/>
+		<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"/>
 		<title>{ title }</title>
 		<script src="/assets/js/htmx@v4.0.0.min.js" nonce={ templ.GetNonce(ctx) }></script>
 		<script nonce={ templ.GetNonce(ctx) }>

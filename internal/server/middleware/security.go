@@ -23,8 +23,11 @@ func Security(logger *slog.Logger, ipCfg IPConfig) Handler {
 
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+			w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+			w.Header().Set("X-Permitted-Cross-Domain-Policies", "none")
 			// htmx v4 injects its request-indicator CSS through document.adoptedStyleSheets,
 			// which CSP style-src does not apply to, so no 'unsafe-inline' is needed.
 			// script-src uses a per-request nonce so that templ script components work
