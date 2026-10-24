@@ -26,18 +26,18 @@ import (
 
 // global variables, can be used in any tests.
 var (
-	pw           *playwright.Playwright
-	browser      playwright.Browser
-	expect       playwright.PlaywrightAssertions
-	isChromium   bool
-	isFirefox    bool
-	isWebKit     bool
-	browserName  = getBrowserName()
-	browserType  playwright.BrowserType
-	app          *exec.Cmd
-	baseURL      *url.URL
-	rateLimitApp *exec.Cmd
-	rateLimitURL string
+	pw          *playwright.Playwright
+	browser     playwright.Browser
+	expect      playwright.PlaywrightAssertions
+	isChromium  bool
+	isFirefox   bool
+	isWebKit    bool
+	browserName = getBrowserName()
+	browserType playwright.BrowserType
+	app         *exec.Cmd
+	baseURL     *url.URL
+	e2eDir      string
+	appBin      string
 )
 
 // defaultContextOptions for most tests.
@@ -165,6 +165,12 @@ func beforeAll() {
 	isFirefox = browserName == "firefox"
 	isWebKit = browserName == "webkit"
 
+	e2eDir, err = os.MkdirTemp("", "go-htmx-e2e-*")
+	if err != nil {
+		log.Fatalf("could not create e2e temp dir: %v", err)
+	}
+	appBin = filepath.Join(e2eDir, "e2e-server")
+
 	if err = buildCSS(); err != nil {
 		log.Fatalf("could not build CSS: %v", err)
 	}
@@ -174,7 +180,7 @@ func beforeAll() {
 		log.Fatalf("could not build app: %v", err)
 	}
 
-	if err = migrateDB("../test-db.sqlite3"); err != nil {
+	if err = migrateDB(filepath.Join(e2eDir, "test-db.sqlite3")); err != nil {
 		log.Fatalf("could not migrate db: %v", err)
 	}
 
@@ -189,21 +195,10 @@ func beforeAll() {
 	if err = seedDB(); err != nil {
 		log.Fatalf("could not seed db: %v", err)
 	}
-
-	if err = migrateDB("../test-rl-db.sqlite3"); err != nil {
-		log.Fatalf("could not migrate rate-limit db: %v", err)
-	}
-
-	if err = startRateLimitApp(); err != nil {
-		log.Fatalf("could not start rate limit test app: %v", err)
-	}
 }
 
 func buildApp() error {
-	if err := os.MkdirAll("../tmp", 0750); err != nil {
-		return fmt.Errorf("mkdir tmp: %w", err)
-	}
-	cmd := exec.Command("go", "build", "-o", "./tmp/e2e-server", "./cmd/server")
+	cmd := exec.Command("go", "build", "-o", appBin, "./cmd/server")
 	cmd.Dir = "../"
 	cmd.Env = os.Environ()
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -228,12 +223,12 @@ func buildCSS() error {
 func startApp() error {
 	port := getPort()
 
-	app = exec.Command("./tmp/e2e-server")
+	app = exec.Command(appBin)
 	app.Dir = "../"
 	app.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	app.Env = append(
 		os.Environ(),
-		"DB_URL=./test-db.sqlite3",
+		"DB_URL="+filepath.Join(e2eDir, "test-db.sqlite3"),
 		fmt.Sprintf("PORT=%d", port),
 		"LOG_LEVEL=DEBUG",
 		"RATE_LIMIT=1000000",
@@ -252,28 +247,40 @@ func startApp() error {
 	return nil
 }
 
-// startRateLimitApp starts a dedicated server with a low rate limit for use by
-// rate-limiting tests. This keeps the main test server's bucket clean so
-// unrelated tests are never unexpectedly throttled.
-func startRateLimitApp() error {
-	port := getPort()
-	rateLimitApp = exec.Command("./tmp/e2e-server")
-	rateLimitApp.Dir = "../"
-	rateLimitApp.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	rateLimitApp.Env = append(
-		os.Environ(),
-		"DB_URL=./test-rl-db.sqlite3",
-		fmt.Sprintf("PORT=%d", port),
-		"LOG_LEVEL=ERROR",
-		"RATE_LIMIT=30",
-	)
+// startRateLimitApp starts a dedicated server with the given per-IP rate limit
+// and returns its base URL. Each test gets a fresh token bucket and database.
+func startRateLimitApp(t *testing.T, requestsPerMinute int) string {
+	t.Helper()
 
-	if err := startWithPipes(rateLimitApp, "RL-STDOUT", "RL-STDERR"); err != nil {
-		return err
+	port := getPort()
+	dbPath := filepath.Join(e2eDir, fmt.Sprintf("test-rl-db-%d.sqlite3", port))
+	if err := migrateDB(dbPath); err != nil {
+		t.Fatalf("could not migrate rate-limit db: %v", err)
 	}
 
-	rateLimitURL = fmt.Sprintf("http://localhost:%d", port)
-	return waitForHealthCheck(rateLimitURL)
+	cmd := exec.Command(appBin)
+	cmd.Dir = "../"
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Env = append(
+		os.Environ(),
+		"DB_URL="+dbPath,
+		fmt.Sprintf("PORT=%d", port),
+		"LOG_LEVEL=ERROR",
+		fmt.Sprintf("RATE_LIMIT=%d", requestsPerMinute),
+	)
+
+	if err := startWithPipes(cmd, "RL-STDOUT", "RL-STDERR"); err != nil {
+		t.Fatalf("could not start rate limit test app: %v", err)
+	}
+	t.Cleanup(func() {
+		killAndWait(cmd)
+	})
+
+	rateLimitURL := fmt.Sprintf("http://localhost:%d", port)
+	if err := waitForHealthCheck(rateLimitURL); err != nil {
+		t.Fatalf("rate limit app failed health check: %v", err)
+	}
+	return rateLimitURL
 }
 
 // waitForHealthCheck polls the /health endpoint until it responds successfully.
@@ -332,7 +339,7 @@ func migrateDB(dbRelPath string) error {
 }
 
 func seedDB() error {
-	db, err := sql.Open("sqlite", "file:../test-db.sqlite3")
+	db, err := sql.Open("sqlite", "file:"+filepath.Join(e2eDir, "test-db.sqlite3"))
 	if err != nil {
 		return err
 	}
@@ -387,17 +394,10 @@ func getPort() int {
 // afterAll does cleanup, e.g. stop playwright driver
 func afterAll() {
 	killAndWait(app)
-	killAndWait(rateLimitApp)
 	if err := pw.Stop(); err != nil {
 		log.Fatalf("could not stop Playwright: %v", err)
 	}
-	if err := os.Remove("../test-db.sqlite3"); err != nil {
-		log.Fatalf("could not remove test-db.sqlite3: %v", err)
-	}
-	if err := os.Remove("../test-rl-db.sqlite3"); err != nil {
-		fmt.Println(err)
-	}
-	if err := os.Remove("../tmp/e2e-server"); err != nil {
+	if err := os.RemoveAll(e2eDir); err != nil {
 		fmt.Println(err)
 	}
 }

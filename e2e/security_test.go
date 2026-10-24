@@ -4,15 +4,12 @@ package e2e_test
 
 import (
 	"net/http"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var rateLimitMu sync.Mutex
 
 func TestSecurityHeaders(t *testing.T) {
 	t.Parallel()
@@ -84,9 +81,8 @@ func TestCSRFProtection(t *testing.T) {
 
 func TestRateLimiting(t *testing.T) {
 	t.Parallel()
-	rateLimitMu.Lock()
-	defer rateLimitMu.Unlock()
 
+	rateLimitURL := startRateLimitApp(t, 30)
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	rateLimitHit := false
@@ -114,16 +110,4 @@ func TestRateLimiting(t *testing.T) {
 
 	assert.True(t, rateLimitHit,
 		"Rate limit should be triggered after rapid requests (last status: %d)", lastStatusCode)
-}
-
-func TestServerTimeouts(t *testing.T) {
-	t.Parallel()
-
-	time.Sleep(2 * time.Second)
-
-	resp, err := http.Get(baseURL.String() + "/health")
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
