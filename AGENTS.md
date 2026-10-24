@@ -176,10 +176,10 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **Typography**: Size and weight: `text-xl font-bold`, `text-sm text-gray-600`
 
 ## Architecture & Patterns
-- **Server**: Uses standard library `http.ServeMux` with graceful shutdown (SIGINT handling)
+- **Server**: Uses standard library `http.ServeMux` with graceful shutdown (SIGINT and SIGTERM)
 - **Middleware**: Chain pattern with logging, caching, and custom middleware support
 - **Handlers**: Struct-based handlers with dependency injection (logger, database)
-- **Database**: Interface-based design (`db.Database`) for easy testing/mocking
+- **Database**: Interface-based design (`db.Database`); the concrete `*queries.Queries` is not mockable, so test the DB against a temp SQLite file
 - **Logging**: Structured logging with `slog`, configurable via `LOG_LEVEL`/`LOG_OUTPUT` env vars
 - **Context**: Always pass `context.Context` as first parameter to functions that need it
 - **Error handling**: Use `fmt.Errorf` with `%w` for error wrapping, log errors with context
@@ -191,9 +191,11 @@ This file contains comprehensive guidelines for AI coding agents working in this
 
 ## Environment Variables
 - **PORT**: Server port (default: 8080)
-- **LOG_LEVEL**: debug, info, warn, error (default: info)
-- **LOG_OUTPUT**: text, json (default: text)
+- **LOG_LEVEL**: debug, info, warn, error (default: info; case-insensitive)
+- **LOG_OUTPUT**: text, json (default: text; case-insensitive)
 - **DB_URL**: Database file path (default: ./db.sqlite3)
+- **RATE_LIMIT**: Requests per minute per IP (default: 50)
+- **TRUST_PROXY_HEADERS**: Trust `X-Forwarded-For`/`X-Real-IP` from a single proxy (default: false)
 
 ## Testing
 - **E2E**: Playwright tests with `//go:build e2e` tag, run with `go test -tags=e2e`
