@@ -19,7 +19,7 @@ func CSRF(logger *slog.Logger, ipCfg IPConfig) Handler {
 			slog.String("host", r.Host),
 			slog.String("sec_fetch_site", r.Header.Get("Sec-Fetch-Site")),
 		)
-		http.Error(w, "Cross-origin request forbidden", http.StatusForbidden)
+		WriteError(logger, w, r, http.StatusForbidden, "Cross-origin request forbidden")
 	}))
 
 	return func(next http.Handler) http.Handler {

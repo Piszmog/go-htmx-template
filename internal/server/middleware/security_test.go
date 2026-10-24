@@ -59,6 +59,27 @@ func TestSecurity_CSPContainsNonce(t *testing.T) {
 	assert.NotEmpty(t, extractSecurityNonce(csp), "nonce value should not be empty")
 }
 
+func TestSecurity_CSPStyleSrcHasNoUnsafeInline(t *testing.T) {
+	t.Parallel()
+
+	cfg := middleware.IPConfig{TrustProxyHeaders: false}
+	mw := middleware.Security(discardLogger(), cfg)
+
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	csp := rec.Header().Get("Content-Security-Policy")
+	// htmx 4 injects its indicator CSS via adoptedStyleSheets, so style-src does
+	// not need 'unsafe-inline'.
+	assert.Contains(t, csp, "style-src 'self';")
+	assert.NotContains(t, csp, "style-src 'self' 'unsafe-inline'")
+}
+
 func TestSecurity_NonceIsUniqueAcrossRequests(t *testing.T) {
 	t.Parallel()
 

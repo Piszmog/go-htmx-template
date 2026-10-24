@@ -26,7 +26,7 @@ templ GreetButton() {
 templ Counter(count int) {
 	<div id="counter" class="mt-8">
 		<p class="text-2xl mb-4">Count: { strconv.Itoa(count) }</p>
-		<button hx-post="/count" hx-target="#counter" hx-swap="outerHTML"
+		<button id="counter-button" hx-post="/count" hx-target="#counter" hx-swap="outerMorph"
 			class="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600">
 			Increment
 		</button>

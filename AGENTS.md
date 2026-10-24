@@ -122,14 +122,41 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **File structure**: Package declaration, imports, then templ components
 - **Generated files**: `*.go` files are auto-generated, edit only `*.templ` files
 
-## HTMX Patterns
+## HTMX Patterns (htmx 4)
 - **Basic requests**: `hx-get="/path"`, `hx-post="/path"`, `hx-put="/path"`, `hx-delete="/path"`
 - **Triggers**: `hx-trigger="click"` (default), `hx-trigger="change"`, `hx-trigger="keyup delay:500ms"`
 - **Targets**: `hx-target="#result"`, `hx-target="closest tr"`, `hx-target="next .error"`
 - **Swapping**: `hx-swap="innerHTML"` (default), `hx-swap="outerHTML"`, `hx-swap="afterend"`
-- **Indicators**: Add `class="htmx-indicator"` to show/hide loading states
-- **Forms**: Include form values automatically, use `hx-include` for additional inputs
+  - Prefer `innerMorph`/`outerMorph` over `innerHTML`/`outerHTML` when DOM state (focus, video, scroll,
+    third-party widgets) must survive the swap. Morphing matches elements by `id`, so give elements you want
+    to keep stable an `id`
+- **Inheritance is explicit**: `hx-confirm:inherited="Are you sure?"` inherits down the tree; `:append` adds to the
+  inherited value. htmx 2's implicit inheritance is off (`htmx.config.implicitInheritance`), so attributes on a
+  parent do not apply to children unless marked
+- **Indicators**: Add `class="htmx-indicator"` to show/hide loading states — htmx 4 ships the CSS, and it is injected
+  via `document.adoptedStyleSheets`, so no `style-src 'unsafe-inline'` is needed
+- **Forms**: Include form values automatically, use `hx-include` for additional inputs. `hx-get` and `hx-delete` do
+  not include enclosing form inputs in htmx 4; add `hx-include="closest form"` when needed
 - **Boosting**: `hx-boost="true"` converts links/forms to AJAX requests
+- **Error responses swap**: htmx 4 swaps every response except `204`/`304`. Servers must return HTML for error
+  statuses. Middleware uses `middleware.WriteError`, which renders `core.ErrorRegion` as an out-of-band swap into
+  `#error-region`; because the response then contains only out-of-band content, htmx skips the main swap and the
+  element that issued the request survives. Use `hx-status:422="target:#field-errors"` for per-element control
+- **Per-request options**: `hx-config="timeout:5s"` (also `credentials`, `cache`, `redirect`, `referrer`,
+  `integrity`, `validate`). The default timeout is 60s, up from "no timeout" in htmx 2
+- **History**: htmx 4 stamps every history entry and, for apps using `hx-boost`/`hx-push-url`, restores back/forward
+  by refetching the page and swapping it into `<body>` (no localStorage cache; an entry replaced by a full page load
+  still navigates natively). `htmx.config.inlineScriptNonce` in `core/head` keeps inline scripts in swapped
+  fragments executable under the document's original CSP nonce
+- **Renamed in htmx 4**: `hx-disable` → `hx-ignore`, `hx-disabled-elt` → `hx-disable`, `hx-vars` → `hx-vals`,
+  `hx-ext` is gone (include extension scripts directly), `hx-request` → `hx-config`. Removed outright: `hx-params`,
+  `hx-disinherit`, `hx-inherit`, `hx-history`, and the `queue` modifier on `hx-trigger` (use `hx-sync`)
+- **Request headers**: `HX-Trigger` is now `HX-Source` (`tag#id`), `HX-Trigger-Name` is gone, and `HX-Request-Type`
+  (`partial` or `full`) is new
+- **Event names**: `htmx:after:swap`, `htmx:after:settle`, `htmx:before:request`, `htmx:response:error`,
+  `htmx:error` (htmx 2 used `htmx:afterSwap`, `htmx:responseError`, …)
+- **Upgrading**: run `./upgrade_htmx.sh v<version>` (it pulls `dist/htmx.min.js` from npm via jsdelivr and validates
+  the download), then check `internal/components/**/*.templ` against the rename lists above
 
 ## SQLC Usage
 - **Query annotations**: `-- name: FunctionName :one|:many|:exec` (required for all queries)

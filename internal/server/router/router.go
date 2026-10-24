@@ -32,7 +32,7 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLim
 	hdlr := http.Handler(mux)
 	hdlr = middleware.Chain(
 		middleware.Recovery(logger, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
+			middleware.WriteError(logger, w, r, http.StatusInternalServerError, "500 Internal Server Error")
 		})),
 		middleware.Logging(logger, ipCfg),
 		middleware.Security(logger, ipCfg),

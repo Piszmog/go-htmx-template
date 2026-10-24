@@ -17,18 +17,10 @@ templ head(title string) {
 		<meta name="color-scheme" content="light dark"/>
 		<meta name="description" content="Hello world"/>
 		<title>{ title }</title>
-		<script src="/assets/js/htmx@v2.0.7.min.js" nonce={ templ.GetNonce(ctx) }></script>
+		<script src="/assets/js/htmx@v4.0.0.min.js" nonce={ templ.GetNonce(ctx) }></script>
 		<script nonce={ templ.GetNonce(ctx) }>
-			htmx.config.includeIndicatorStyles = false;
+			// htmx stamps this nonce onto any script it re-creates from a swapped fragment.
 			htmx.config.inlineScriptNonce = document.currentScript.nonce;
-			htmx.config.methodsThatUseUrlParams = ["get"];
-			htmx.config.responseHandling = [
-				{code:"204", swap: false},
-				{code:"[23]..", swap: true},
-				{code:"[45]..", swap: false, error: true},
-				{code:"422", swap: true},
-				{code:".*", swap: false}
-			];
 		</script>
 		<link href={ "/assets/css/output@" + version.Value + ".css" } rel="stylesheet"/>
 	</head>
@@ -37,6 +29,7 @@ templ head(title string) {
 templ body(content templ.Component) {
 	<body class="flex flex-col min-h-screen">
 		<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4">Skip to content</a>
+		<div id="error-region"></div>
 		<main id="main-content" class="grow">
 			@content
 		</main>

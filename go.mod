@@ -1,10 +1,10 @@
 module go-htmx-template
 
-go 1.26.3
+go 1.27.3
 
 require (
 	github.com/a-h/templ v0.3.1070
-	github.com/playwright-community/playwright-go v0.5700.1
+	github.com/mxschmitt/playwright-go v0.6201.1
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/time v0.16.0
 	modernc.org/sqlite v1.61.0
@@ -27,7 +27,6 @@ require (
 	github.com/fatih/color v1.19.0 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.5 // indirect
 	github.com/go-sql-driver/mysql v1.10.1 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/google/cel-go v0.31.0 // indirect
