@@ -2,23 +2,33 @@ package handler
 
 import (
 	"net/http"
-	"sync/atomic"
+	"strconv"
 
 	"github.com/a-h/templ"
 
 	"go-htmx-template/internal/components/core"
 	"go-htmx-template/internal/components/home"
+	"go-htmx-template/internal/server/middleware"
 )
-
-var counter atomic.Int64 //nolint:gochecknoglobals // demo counter for template
 
 // Home handles the home page.
 func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
-	h.html(r.Context(), w, http.StatusOK, core.HTML("Example Site", home.Page(int(counter.Load()))))
+	h.html(r.Context(), w, http.StatusOK, core.HTML("Example Site", home.Page(0)))
 }
 
-// Count increments the counter and returns the updated Counter fragment.
+// Count increments the submitted counter and returns the updated Counter fragment.
+// The value is round-tripped through the form so the demo does not need global
+// state; it is not a security boundary or a replacement for persistence.
 func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
-	newCount := counter.Add(1)
-	h.html(r.Context(), w, http.StatusOK, templ.Join(home.Counter(int(newCount)), core.ErrorClear()))
+	count := 0
+	if raw := r.PostFormValue("count"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil {
+			middleware.WriteError(h.logger, w, r, http.StatusBadRequest, "Invalid count")
+			return
+		}
+		count = parsed
+	}
+
+	h.html(r.Context(), w, http.StatusOK, templ.Join(home.Counter(count+1), core.ErrorClear()))
 }

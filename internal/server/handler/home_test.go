@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -75,6 +76,21 @@ func TestHome_RendersHTMX4(t *testing.T) {
 	}
 }
 
+func TestHome_RendersStatelessCounterForm(t *testing.T) {
+	t.Parallel()
+
+	h := newHomeHandler()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	h.Home(rec, req)
+
+	body := rec.Body.String()
+	assert.Contains(t, body, `name="count" value="0"`)
+	assert.Contains(t, body, `hx-indicator="#counter-spinner"`)
+	assert.Contains(t, body, `hx-disable="#counter-button"`)
+}
+
 func TestCount_StatusCode(t *testing.T) {
 	t.Parallel()
 
@@ -127,24 +143,34 @@ func TestCount_ClearsErrorRegion(t *testing.T) {
 	assert.Contains(t, body, `hx-swap-oob="true"`)
 }
 
-//nolint:paralleltest // shares package-level counter; two sequential calls must not be interleaved
-func TestCount_IncrementsOnEachCall(t *testing.T) {
+func TestCount_IncrementsSubmittedValue(t *testing.T) {
+	t.Parallel()
+
 	h := newHomeHandler()
+	form := url.Values{"count": {"41"}}
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
 
-	req1 := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", nil)
-	rec1 := httptest.NewRecorder()
-	h.Count(rec1, req1)
+	h.Count(rec, req)
 
-	req2 := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", nil)
-	rec2 := httptest.NewRecorder()
-	h.Count(rec2, req2)
+	count, ok := extractCountFromBody(rec.Body.String())
+	require.True(t, ok, "could not extract count from response")
+	assert.Equal(t, 42, count)
+}
 
-	count1, ok1 := extractCountFromBody(rec1.Body.String())
-	count2, ok2 := extractCountFromBody(rec2.Body.String())
+func TestCount_RejectsInvalidValue(t *testing.T) {
+	t.Parallel()
 
-	require.True(t, ok1, "could not extract count from first response")
-	require.True(t, ok2, "could not extract count from second response")
-	assert.Equal(t, count1+1, count2, "each call should increment the counter by 1")
+	h := newHomeHandler()
+	form := url.Values{"count": {"nope"}}
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	h.Count(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
 // extractCountFromBody parses the integer after "Count: " in the response body.

@@ -96,3 +96,24 @@ func counterValue(t *testing.T, page playwright.Page) int {
 	require.NoError(t, err, "could not parse counter value from: %s", text)
 	return n
 }
+
+// TestCounter_IsIndependentPerPage proves the counter is round-tripped through
+// the form rather than stored server-side: incrementing one page must not
+// change another open page.
+func TestCounter_IsIndependentPerPage(t *testing.T) {
+	_, page1 := newPage(t)
+	_, page2 := newPage(t)
+
+	_, err := page1.Goto(getFullPath("/"))
+	require.NoError(t, err)
+	_, err = page2.Goto(getFullPath("/"))
+	require.NoError(t, err)
+
+	before1 := counterValue(t, page1)
+	before2 := counterValue(t, page2)
+
+	require.NoError(t, page1.Locator("#counter-button").Click())
+
+	require.NoError(t, expect.Locator(page1.GetByText("Count: "+strconv.Itoa(before1+1))).ToBeVisible())
+	assert.Equal(t, before2, counterValue(t, page2))
+}
