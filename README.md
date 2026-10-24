@@ -113,8 +113,8 @@ A few different technologies are configured to help getting off the ground easie
   - Output is generated with the [CLI](https://tailwindcss.com/docs/installation/tailwind-cli)
 - [templ](https://templ.guide/) for creating HTML
 - [HTMX](https://htmx.org/) for HTML interaction
-  - The script `upgrade_htmx.sh` is available to make upgrading easier
-  - Already included in this template
+  - Vendored at `internal/dist/assets/js/htmx@v4.0.0.min.js`
+  - The script `upgrade_htmx.sh` is available to make upgrading easier; it pulls the bundle from npm (via jsdelivr) and validates it before replacing anything
 - [air](https://github.com/air-verse/air) for live reloading of the application.
 - [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations (build/dev-time tool via `./migrate.sh`; not a runtime dependency of the server binary).
 - [playwright-go](https://github.com/playwright-community/playwright-go) for E2E testing.
@@ -151,6 +151,9 @@ The following security headers are automatically set on all responses:
 - `X-Content-Type-Options: nosniff` - Prevents MIME-type sniffing
 - `Referrer-Policy: strict-origin-when-cross-origin` - Controls referrer information
 - `Permissions-Policy: geolocation=(), microphone=(), camera=()` - Restricts browser features
+- `Content-Security-Policy` - Nonce-based `script-src`, no `'unsafe-inline'` for scripts or styles
+  - htmx 4 injects its indicator CSS through constructable stylesheets, which `style-src` does not govern
+  - Error responses are rendered as HTML fragments and swapped out of band into `#error-region`
 - `Strict-Transport-Security` - Enforces HTTPS (when using TLS)
 
 **Implementation:** See `internal/server/middleware/security.go`
@@ -219,7 +222,7 @@ Comprehensive security tests are included in `e2e/security_test.go`:
 │   │   │   ├── css
 │   │   │   │   └── output@dev.css
 │   │   │   └── js
-│   │   │       └── htmx@v2.0.7.min.js
+│   │   │       └── htmx@v4.0.0.min.js
 │   │   └── dist.go
 │   ├── log
 │   │   └── log.go

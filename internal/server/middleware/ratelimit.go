@@ -48,7 +48,7 @@ func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, 
 				)
 
 				w.Header().Set("Retry-After", "60")
-				http.Error(w, "Rate limit exceeded. Please try again later.", http.StatusTooManyRequests)
+				WriteError(logger, w, r, http.StatusTooManyRequests, "Rate limit exceeded. Please try again later.")
 				return
 			}
 

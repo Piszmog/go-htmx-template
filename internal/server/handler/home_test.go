@@ -55,6 +55,26 @@ func TestHome_ContainsWelcomeText(t *testing.T) {
 	assert.Contains(t, rec.Body.String(), "Welcome!")
 }
 
+func TestHome_RendersHTMX4(t *testing.T) {
+	t.Parallel()
+
+	h := newHomeHandler()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	h.Home(rec, req)
+
+	body := rec.Body.String()
+	assert.Regexp(t, `src="/assets/js/htmx@v4\.[0-9.]+min\.js"`, body)
+	// The page needs the out-of-band target for error responses.
+	assert.Contains(t, body, `id="error-region"`)
+
+	// Config removed in htmx 4 must not creep back in.
+	for _, removed := range []string{"responseHandling", "methodsThatUseUrlParams", "includeIndicatorStyles"} {
+		assert.NotContains(t, body, removed)
+	}
+}
+
 func TestCount_StatusCode(t *testing.T) {
 	t.Parallel()
 

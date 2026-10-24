@@ -48,14 +48,40 @@ func TestCounter_IncrementsMultipleTimes(t *testing.T) {
 
 	before := counterValue(t, page)
 
+	// Click one at a time and wait for each swap. htmx 4 dropped extra clicks
+	// under its default "queue first" strategy, so firing three clicks as fast as
+	// possible asserts something htmx does not guarantee.
 	incrementBtn := page.Locator(`button:has-text("Increment")`)
-	for range 3 {
+	for i := range 3 {
 		require.NoError(t, incrementBtn.Click())
-	}
 
-	expectedText := "Count: " + strconv.Itoa(before+3)
+		expectedText := "Count: " + strconv.Itoa(before+i+1)
+		require.NoError(t, expect.Locator(page.GetByText(expectedText)).ToBeVisible())
+	}
+}
+
+// TestCounter_PreservesButtonNodeAfterSwap proves the outerMorph swap updates
+// the existing DOM instead of replacing it: a property set on the button before
+// the request is still there afterwards. An outerHTML swap would drop it.
+func TestCounter_PreservesButtonNodeAfterSwap(t *testing.T) {
+	_, page := newPage(t)
+
+	_, err := page.Goto(getFullPath("/"))
+	require.NoError(t, err)
+
+	before := counterValue(t, page)
+
+	_, err = page.Evaluate(`document.getElementById("counter-button").swapMarker = "original-node"`)
+	require.NoError(t, err)
+
+	require.NoError(t, page.Locator("#counter-button").Click())
+
+	expectedText := "Count: " + strconv.Itoa(before+1)
 	require.NoError(t, expect.Locator(page.GetByText(expectedText)).ToBeVisible())
-	assert.Greater(t, before+3, before, "counter should increase with each click")
+
+	marker, err := page.Evaluate(`document.getElementById("counter-button").swapMarker`)
+	require.NoError(t, err)
+	assert.Equal(t, "original-node", marker, "outerMorph should preserve the button node")
 }
 
 // counterValue reads the current counter value from the rendered page.

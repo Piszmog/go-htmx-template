@@ -1,0 +1,11 @@
+package core
+
+// ErrorRegion renders an error as an out-of-band swap that replaces the
+// #error-region placeholder in the layout. The triggering element is left
+// untouched, so a failed request never destroys the component that issued it.
+templ ErrorRegion(message string) {
+	<div id="error-region" hx-swap-oob="true" role="alert"
+		class="mx-auto mt-4 w-full max-w-2xl rounded-md border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-700">
+		{ message }
+	</div>
+}

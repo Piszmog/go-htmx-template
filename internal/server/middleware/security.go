@@ -25,13 +25,14 @@ func Security(logger *slog.Logger, ipCfg IPConfig) Handler {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
-			// style-src 'unsafe-inline' is kept because HTMX v2 injects inline styles
-			// for request indicators. script-src uses a per-request nonce so that
-			// templ script components work without 'unsafe-inline'.
+			// htmx v4 injects its request-indicator CSS through document.adoptedStyleSheets,
+			// which CSP style-src does not apply to, so no 'unsafe-inline' is needed.
+			// script-src uses a per-request nonce so that templ script components work
+			// without 'unsafe-inline'.
 			w.Header().Set("Content-Security-Policy",
 				"default-src 'self'; "+
 					fmt.Sprintf("script-src 'self' 'nonce-%s'; ", nonce)+
-					"style-src 'self' 'unsafe-inline'; "+
+					"style-src 'self'; "+
 					"img-src 'self' data:; "+
 					"connect-src 'self'; "+
 					"font-src 'self'; "+
