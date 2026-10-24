@@ -12,16 +12,22 @@ func Logging(logger *slog.Logger, ipCfg IPConfig) Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 			rw := newResponseWriter(w)
+
+			// Deferred so a panic that unwinds through this middleware still
+			// produces an access log entry once Recovery writes the 500.
+			defer func() {
+				logger.Debug(
+					"Handled request",
+					slog.String("method", r.Method),
+					slog.String("path", r.URL.Path),
+					slog.String("remote", GetClientIP(r, ipCfg)),
+					slog.Int("status", rw.statusCode),
+					slog.Int("bytes", rw.bytesWritten),
+					slog.Duration("duration", time.Since(start)),
+				)
+			}()
+
 			next.ServeHTTP(rw, r)
-			logger.Debug(
-				"Handled request",
-				slog.String("method", r.Method),
-				slog.String("path", r.URL.Path),
-				slog.String("remote", GetClientIP(r, ipCfg)),
-				slog.Int("status", rw.statusCode),
-				slog.Int("bytes", rw.bytesWritten),
-				slog.Duration("duration", time.Since(start)),
-			)
 		})
 	}
 }

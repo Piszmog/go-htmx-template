@@ -1,8 +1,8 @@
 package middleware_test
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -154,4 +154,32 @@ func TestLogging_NoLogWhenNotDebugLevel(t *testing.T) {
 	logOutput := logBuffer.String()
 	// Should not log at debug level when logger is set to INFO
 	assert.Empty(t, strings.TrimSpace(logOutput))
+}
+
+// TestLogging_PanicStillLogsAccess verifies the access log is emitted even when
+// the wrapped handler panics and Recovery writes the 500 response.
+func TestLogging_PanicStillLogsAccess(t *testing.T) {
+	t.Parallel()
+
+	var logBuffer bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+
+	panicHandler := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		panic("boom")
+	})
+	onPanic := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		middleware.WriteError(logger, w, r, http.StatusInternalServerError, "500 Internal Server Error")
+	})
+
+	mw := middleware.Logging(logger, devIPConfig)(middleware.Recovery(logger, onPanic)(panicHandler))
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil)
+	rec := httptest.NewRecorder()
+
+	mw.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Contains(t, logBuffer.String(), "status=500")
 }
