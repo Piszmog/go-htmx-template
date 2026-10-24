@@ -41,9 +41,3 @@ func newLocalDB(path string) (*localDB, error) {
 	db.SetMaxOpenConns(maxOpenConns)
 	return &localDB{db: db, queries: queries.New(db)}, nil
 }
-
-// NewFromRawDB creates a Database from an existing *sql.DB. Useful for testing.
-func NewFromRawDB(rawDB *sql.DB) Database {
-	rawDB.SetMaxOpenConns(maxOpenConns)
-	return &localDB{db: rawDB, queries: queries.New(rawDB)}
-}
