@@ -2,8 +2,9 @@ package handler
 
 import (
 	"encoding/json"
-	"go-htmx-template/internal/version"
 	"net/http"
+
+	"go-htmx-template/internal/version"
 )
 
 // Health returns a simple health check response.

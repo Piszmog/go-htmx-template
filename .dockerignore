@@ -11,7 +11,6 @@ e2e
 .golangci.yml
 .air.toml
 .goreleaser.yaml
-.mcp.json
 
 # Local tooling and IDE
 .claude

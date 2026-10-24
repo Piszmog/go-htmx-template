@@ -2,10 +2,12 @@ package handler
 
 import (
 	"context"
-	"github.com/a-h/templ"
-	"go-htmx-template/internal/db"
 	"log/slog"
 	"net/http"
+
+	"github.com/a-h/templ"
+
+	"go-htmx-template/internal/db"
 )
 
 // Handler handles requests.
