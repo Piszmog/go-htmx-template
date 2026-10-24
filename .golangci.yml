@@ -19,6 +19,15 @@ linters:
     - gomodguard
   exclusions:
     rules:
+      # exhaustruct flags idiomatic zero-value literals such as
+      # slog.HandlerOptions{Level: ...}, http.Server and tls.ConnectionState.
+      # Listing it under `disable` is not always honoured (CI still reported
+      # exhaustruct_v5 with the same binary version and config), so exclude it
+      # at report time as well.
+      - path: ".*"
+        linters:
+          - exhaustruct
+          - exhaustruct_v5
       - path: "_test\\.go"
         linters:
           - funlen
