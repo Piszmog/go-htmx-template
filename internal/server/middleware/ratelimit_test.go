@@ -44,6 +44,31 @@ func TestAllowDeny(t *testing.T) {
 	}
 }
 
+// TestRetryAfterMatchesConfiguredRate verifies the retry hint is derived from
+// the configured rate instead of a hardcoded minute.
+func TestRetryAfterMatchesConfiguredRate(t *testing.T) {
+	t.Parallel()
+	h := newHandler(t, 30, 1000)
+
+	for range 30 {
+		if code := request(h, "1.2.3.4"); code != http.StatusOK {
+			t.Fatalf("request within burst: want 200, got %d", code)
+		}
+	}
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	req.RemoteAddr = "1.2.3.4:9999"
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusTooManyRequests {
+		t.Fatalf("exhausted bucket: want 429, got %d", rr.Code)
+	}
+	if got := rr.Header().Get("Retry-After"); got != "2" {
+		t.Fatalf("Retry-After: want 2, got %q", got)
+	}
+}
+
 // TestDifferentIPsAreIndependent confirms separate IPs have independent buckets.
 func TestDifferentIPsAreIndependent(t *testing.T) {
 	t.Parallel()

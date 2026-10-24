@@ -93,7 +93,7 @@ func TestRateLimiting(t *testing.T) {
 	var lastStatusCode int
 
 	for range 60 {
-		resp, err := client.Get(rateLimitURL + "/health")
+		resp, err := client.Get(rateLimitURL + "/")
 		require.NoError(t, err)
 		lastStatusCode = resp.StatusCode
 
@@ -102,7 +102,7 @@ func TestRateLimiting(t *testing.T) {
 
 			retryAfter := resp.Header.Get("Retry-After")
 			assert.NotEmpty(t, retryAfter)
-			assert.Equal(t, "60", retryAfter)
+			assert.Equal(t, "2", retryAfter)
 
 			resp.Body.Close()
 			break

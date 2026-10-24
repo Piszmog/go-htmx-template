@@ -138,10 +138,11 @@ The application uses Go 1.25+'s native `http.CrossOriginProtection` for CSRF def
 Per-IP rate limiting prevents abuse and helps protect against DoS attacks.
 
 - **Default limit:** 50 requests per minute per IP address
+- **Scope:** Dynamic routes only; `/assets/` and `/health` do not consume the budget
 - **Algorithm:** Token bucket with in-memory storage
 - **Auto-cleanup:** Inactive IP limiters are cleaned up every 10 minutes
 - **Configuration:** Set `RATE_LIMIT` environment variable to customize
-- **Headers:** Returns `Retry-After: 60` when limit exceeded
+- **Headers:** Returns `Retry-After` computed from the configured rate when the limit is exceeded
 - **Implementation:** See `internal/server/middleware/ratelimit.go`
 
 ### Security Headers
