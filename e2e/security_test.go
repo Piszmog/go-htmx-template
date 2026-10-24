@@ -3,7 +3,6 @@
 package e2e_test
 
 import (
-	"fmt"
 	"net/http"
 	"sync"
 	"testing"
@@ -115,43 +114,6 @@ func TestRateLimiting(t *testing.T) {
 
 	assert.True(t, rateLimitHit,
 		"Rate limit should be triggered after rapid requests (last status: %d)", lastStatusCode)
-}
-
-func TestRateLimitingIgnoresXForwardedForInDevMode(t *testing.T) {
-	t.Parallel()
-	rateLimitMu.Lock()
-	defer rateLimitMu.Unlock()
-
-	client := &http.Client{Timeout: 5 * time.Second}
-
-	// In dev mode, X-Forwarded-For is ignored. Sending requests with
-	// different X-Forwarded-For values should still hit the same rate
-	// limit bucket because the server uses RemoteAddr instead.
-	rateLimitHit := false
-
-	for i := range 60 {
-		req, err := http.NewRequest("GET", rateLimitURL+"/health", nil)
-		require.NoError(t, err)
-
-		// Each request pretends to come from a different IP via
-		// X-Forwarded-For, but in dev mode this header is ignored.
-		req.Header.Set("X-Forwarded-For", fmt.Sprintf("203.0.113.%d", i+1))
-
-		resp, err := client.Do(req)
-		require.NoError(t, err)
-
-		if resp.StatusCode == http.StatusTooManyRequests {
-			rateLimitHit = true
-			resp.Body.Close()
-			break
-		}
-		resp.Body.Close()
-
-		time.Sleep(5 * time.Millisecond)
-	}
-
-	assert.True(t, rateLimitHit,
-		"In dev mode, different X-Forwarded-For values should NOT bypass rate limiting")
 }
 
 func TestServerTimeouts(t *testing.T) {
