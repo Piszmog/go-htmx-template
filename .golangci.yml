@@ -6,6 +6,7 @@ linters:
     - depguard
     - dupl
     - exhaustruct
+    - exhaustruct_v5
     - gocyclo
     - lll
     - maintidx
