@@ -92,4 +92,10 @@ func TestHTMXErrorRendersOutOfBand(t *testing.T) {
 	// content, so the component that issued the request survives untouched.
 	assert.Equal(t, before, counterValue(t, page))
 	require.NoError(t, expect.Locator(page.Locator("#counter-button")).ToBeVisible())
+
+	// Once the bucket refills, a successful request clears the stale banner.
+	page.WaitForTimeout(2200)
+	require.NoError(t, page.Locator("#counter-button").Click())
+	require.NoError(t, expect.Locator(page.Locator("#error-region")).ToHaveText(""))
+	require.NoError(t, expect.Locator(page.Locator("#counter-button")).ToBeVisible())
 }

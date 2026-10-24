@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"sync/atomic"
 
+	"github.com/a-h/templ"
+
 	"go-htmx-template/internal/components/core"
 	"go-htmx-template/internal/components/home"
 )
@@ -18,5 +20,5 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 // Count increments the counter and returns the updated Counter fragment.
 func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 	newCount := counter.Add(1)
-	h.html(r.Context(), w, http.StatusOK, home.Counter(int(newCount)))
+	h.html(r.Context(), w, http.StatusOK, templ.Join(home.Counter(int(newCount)), core.ErrorClear()))
 }

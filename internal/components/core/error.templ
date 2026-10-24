@@ -9,3 +9,10 @@ templ ErrorRegion(message string) {
 		{ message }
 	</div>
 }
+
+// ErrorClear clears the error region after a successful request. It is sent as
+// an out-of-band swap alongside successful fragments so a previous error does
+// not stay visible until the next full page load.
+templ ErrorClear() {
+	<div id="error-region" hx-swap-oob="true" role="alert"></div>
+}
