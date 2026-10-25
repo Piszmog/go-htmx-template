@@ -1,8 +1,8 @@
 package middleware_test
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"

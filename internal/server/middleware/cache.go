@@ -1,8 +1,9 @@
 package middleware
 
 import (
-	"go-htmx-template/internal/version"
 	"net/http"
+
+	"go-htmx-template/internal/version"
 )
 
 // CacheMiddleware sets the Cache-Control header based on the version.

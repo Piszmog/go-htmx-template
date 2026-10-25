@@ -3,9 +3,10 @@ package db
 import (
 	"database/sql"
 	"fmt"
-	"go-htmx-template/internal/db/queries"
 
 	_ "modernc.org/sqlite"
+
+	"go-htmx-template/internal/db/queries"
 )
 
 const maxOpenConns = 4

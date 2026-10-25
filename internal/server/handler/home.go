@@ -1,10 +1,11 @@
 package handler
 
 import (
-	"go-htmx-template/internal/components/core"
-	"go-htmx-template/internal/components/home"
 	"net/http"
 	"sync/atomic"
+
+	"go-htmx-template/internal/components/core"
+	"go-htmx-template/internal/components/home"
 )
 
 var counter atomic.Int64 //nolint:gochecknoglobals // demo counter for template

@@ -51,3 +51,14 @@ linters:
     wrapcheck:
       ignore-package-globs:
         - go-htmx-template/internal/*
+
+formatters:
+  enable:
+    - gci
+    - gofmt
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(go-htmx-template)

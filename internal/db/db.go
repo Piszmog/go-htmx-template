@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	"go-htmx-template/internal/db/queries"
 )
 
