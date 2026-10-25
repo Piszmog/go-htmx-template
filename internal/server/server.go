@@ -66,7 +66,7 @@ func (s *Server) StartAndWait() error {
 
 func (s *Server) start() {
 	go func() {
-		s.logger.Info("starting server", "port", s.srv.Addr)
+		s.logger.Info("starting server", "addr", s.srv.Addr)
 		if err := s.srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			s.errCh <- err
 		}

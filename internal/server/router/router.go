@@ -29,6 +29,7 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLim
 
 	// Routes that should not consume the per-IP rate limit budget.
 	mux.HandleFunc(newPath(http.MethodGet, "/health"), h.Health)
+	mux.HandleFunc(newPath(http.MethodGet, "/readyz"), h.Ready)
 	fileServer := middleware.CacheMiddleware(http.FileServer(http.FS(dist.AssetsDir)))
 	mux.Handle(newPath(http.MethodGet, "/assets/"), assetHandler(logger, fileServer))
 	mux.HandleFunc(newPath(http.MethodGet, "/favicon.ico"), func(w http.ResponseWriter, r *http.Request) {
