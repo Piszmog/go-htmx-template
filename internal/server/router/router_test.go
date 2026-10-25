@@ -48,6 +48,32 @@ func TestNew_RateLimitScope(t *testing.T) {
 	assert.Equal(t, http.StatusTooManyRequests, do(http.MethodGet, "/"))
 }
 
+// TestNew_AssetsDoNotListDirectories verifies the embedded asset server cannot
+// be used to enumerate the asset tree.
+func TestNew_AssetsDoNotListDirectories(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	handler := router.New(ctx, slog.New(slog.DiscardHandler), nil, 100, false)
+
+	do := func(path string) int {
+		t.Helper()
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)
+		req.RemoteAddr = "198.51.100.1:12345"
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	for _, path := range []string{"/assets/", "/assets/js/", "/assets/css/"} {
+		require.Equal(t, http.StatusNotFound, do(path), "asset directory %s", path)
+	}
+
+	require.Equal(t, http.StatusOK, do("/assets/favicon.svg"))
+}
+
 // TestNew_HTMXNotFoundIsHTML verifies the dynamic fallback renders an error
 // fragment for htmx requests instead of the net/http plain-text 404.
 func TestNew_HTMXNotFoundIsHTML(t *testing.T) {

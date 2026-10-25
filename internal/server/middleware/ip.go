@@ -3,7 +3,7 @@ package middleware
 import (
 	"net"
 	"net/http"
-	"slices"
+	"net/netip"
 	"strings"
 )
 
@@ -28,6 +28,9 @@ func GetClientIP(r *http.Request, cfg IPConfig) string {
 		}
 	}
 
+	if ip := normalizeIP(r.RemoteAddr); ip != "" {
+		return ip
+	}
 	return stripPort(r.RemoteAddr)
 }
 
@@ -42,15 +45,11 @@ func parseXForwardedFor(r *http.Request) string {
 		return ""
 	}
 
+	// Only the address appended by the trusted proxy is trustworthy. If it is
+	// malformed, fall back to the other headers/RemoteAddr rather than scanning
+	// left into values the client may have supplied.
 	parts := strings.Split(xff, ",")
-	for _, part := range slices.Backward(parts) {
-		ip := stripPort(strings.TrimSpace(part))
-		if net.ParseIP(ip) != nil {
-			return ip
-		}
-	}
-
-	return ""
+	return normalizeIP(parts[len(parts)-1])
 }
 
 // parseXRealIP extracts and validates the IP from the X-Real-IP header.
@@ -60,13 +59,16 @@ func parseXRealIP(r *http.Request) string {
 		return ""
 	}
 
-	ip := stripPort(strings.TrimSpace(xri))
+	return normalizeIP(xri)
+}
 
-	if net.ParseIP(ip) == nil {
+func normalizeIP(raw string) string {
+	ip := stripPort(strings.TrimSpace(raw))
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
 		return ""
 	}
-
-	return ip
+	return addr.Unmap().String()
 }
 
 func stripPort(addr string) string {
