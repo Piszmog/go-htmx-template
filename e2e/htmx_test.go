@@ -67,10 +67,7 @@ func TestHTMXNoCSPViolations(t *testing.T) {
 // the counter is left untouched. This is the htmx 4 error model: servers return
 // HTML for error statuses, and out-of-band content keeps the main swap empty.
 func TestHTMXErrorRendersOutOfBand(t *testing.T) {
-	// Shares the rate-limit app (RATE_LIMIT=30) with the rate-limit tests, so the
-	// token bucket must be manipulated serially.
-	rateLimitMu.Lock()
-	defer rateLimitMu.Unlock()
+	rateLimitURL := startRateLimitApp(t, 30)
 
 	_, page := newPage(t)
 	_, err := page.Goto(rateLimitURL + "/")
