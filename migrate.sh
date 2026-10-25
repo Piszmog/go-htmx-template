@@ -120,18 +120,24 @@ run_migration() {
         fi
     else
         # Build the database URL.
-        # sqlite (pure-Go modernc) requires an absolute path: sqlite://./rel fails
-        # because '.' is parsed as the host component of the URL.
+        # Both SQLite drivers require an absolute path: sqlite://./rel and
+        # sqlite3://./rel fail because '.' is parsed as the host component of
+        # the URL.
         local db_url
-        if [ "$PROTOCOL" == "sqlite" ]; then
+        if [ "$PROTOCOL" == "sqlite" ] || [ "$PROTOCOL" == "sqlite3" ]; then
             raw="${DB_URL#file:}"
             raw_dir="$(dirname "$raw")"
             if [ ! -d "$raw_dir" ]; then
                 echo "Error: directory '$raw_dir' does not exist (from database URL '$DB_URL')"
                 exit 1
             fi
-            abs="$(cd "$raw_dir" && pwd)/$(basename "$raw")"
-            db_url="sqlite://${abs}"
+            abs_dir="$(cd "$raw_dir" && pwd)"
+            if [ "$abs_dir" == "/" ]; then
+                abs="/$(basename "$raw")"
+            else
+                abs="${abs_dir}/$(basename "$raw")"
+            fi
+            db_url="${PROTOCOL}://${abs}"
         elif [ -n "$AUTH_TOKEN" ]; then
             db_url="${PROTOCOL}://${DB_URL}?authToken=${AUTH_TOKEN}"
         else
