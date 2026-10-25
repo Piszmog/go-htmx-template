@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go-htmx-template/internal/dist"
 	"go-htmx-template/internal/server/router"
 )
 
@@ -32,11 +33,14 @@ func TestNew_RateLimitScope(t *testing.T) {
 		return rec.Code
 	}
 
+	htmxPath, err := dist.AssetPath("js/htmx@*.min.js")
+	require.NoError(t, err)
+
 	for range 5 {
 		require.Equal(t, http.StatusOK, do(http.MethodGet, "/health"))
 	}
 	for range 5 {
-		require.Equal(t, http.StatusOK, do(http.MethodGet, "/assets/js/htmx@v4.0.0.min.js"))
+		require.Equal(t, http.StatusOK, do(http.MethodGet, "/assets/"+htmxPath))
 	}
 
 	assert.Equal(t, http.StatusOK, do(http.MethodGet, "/"))

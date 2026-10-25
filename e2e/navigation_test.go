@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go-htmx-template/internal/dist"
 )
 
 func TestNavigation_404ForUnknownRoutes(t *testing.T) {
@@ -30,7 +32,10 @@ func TestNavigation_AssetsAreServed(t *testing.T) {
 
 	client := &http.Client{Timeout: 5 * time.Second}
 
-	for _, path := range []string{"/assets/css/output@dev.css", "/assets/js/htmx@v4.0.0.min.js"} {
+	htmxPath, err := dist.AssetPath("js/htmx@*.min.js")
+	require.NoError(t, err)
+
+	for _, path := range []string{"/assets/css/output@dev.css", "/assets/" + htmxPath} {
 		resp, err := client.Get(getFullPath(path))
 		require.NoError(t, err)
 
