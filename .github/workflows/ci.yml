@@ -3,8 +3,6 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - '.github/**'
   pull_request:
   workflow_dispatch:
 concurrency:
@@ -14,6 +12,7 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -26,14 +25,15 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: v2.15.0
       - name: SQL Lint
         run: go tool sqlc vet
       - name: Vulnerability Check
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -45,11 +45,16 @@ jobs:
         run: go tool templ generate -path ./internal/components && go tool sqlc generate
       - name: Test
         run: go test -race ./...
-        env:
-          TESTING: "1"
   e2e:
-    name: End-to-End
+    name: End-to-End (${{ matrix.browser }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser:
+          - chromium
+          - firefox
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -60,9 +65,12 @@ jobs:
       - name: Generate
         run: go tool templ generate -path ./internal/components && go tool sqlc generate
       - run: go test ./e2e -tags=e2e
+        env:
+          BROWSER: ${{ matrix.browser }}
   release-dryrun:
     name: Release Dry Run
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: github.event_name == 'push'
     needs:
       - lint
@@ -84,9 +92,24 @@ jobs:
           args: release --clean --snapshot --skip=publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          tags: local/go-htmx-template:pr-${{ github.event.pull_request.number }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
   docker:
     name: Docker
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: github.event_name == 'push'
     permissions:
       contents: read
