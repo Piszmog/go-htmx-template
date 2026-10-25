@@ -44,6 +44,12 @@ go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css
 ./migrate.sh -p sqlite -u ./db.sqlite3
 ```
 
+The application binary can also apply the embedded migrations directly:
+
+```shell
+go run ./cmd/server migrate
+```
+
 When the application is running, go to http://localhost:8080/
 
 ## Environment Variables
@@ -57,7 +63,8 @@ The application reads environment variables from the process; it does **not** lo
 | `PORT` | `8080` | HTTP server port |
 | `LOG_LEVEL` | `info` | Logging level: `debug`, `info`, `warn`, `error` |
 | `LOG_OUTPUT` | `text` | Log format: `text` or `json` |
-| `DB_URL` | `./db.sqlite3` | Path to SQLite database file |
+| `DB_URL` | `./db.sqlite3` | Path or `file:` URL for the SQLite database |
+| `MIGRATE_ON_START` | `false` | Apply embedded migrations before serving |
 | `RATE_LIMIT` | `50` | Requests per minute per IP address |
 | `TRUST_PROXY_HEADERS` | `false` | Trust `X-Forwarded-For` / `X-Real-IP` from a single reverse proxy |
 
@@ -102,6 +109,20 @@ Then simply run the command
 ```shell
 air
 ```
+
+## Deploy
+
+The Docker image embeds the migrations and runs them on startup:
+
+```shell
+docker build -t go-htmx-template .
+docker run --rm -p 8080:8080 -v go-htmx-template-data:/home/nonroot go-htmx-template
+```
+
+- **Explicit migrations:** `./my-app migrate` applies the embedded migrations and exits. Release archives include the same command. In Docker, run `docker run --rm -v go-htmx-template-data:/home/nonroot go-htmx-template migrate`.
+- **Automatic migrations:** `MIGRATE_ON_START=true` runs migrations before the server starts. The image sets this by default.
+- **Multi-instance deployments:** run migrations once as a separate job or init container instead of enabling `MIGRATE_ON_START` on every replica.
+- **Persistence:** mount a volume at `/home/nonroot` (or point `DB_URL` at a mounted path). Without a volume, the SQLite database is lost when the container is removed.
 
 ## Technologies
 

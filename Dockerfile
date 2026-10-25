@@ -27,13 +27,14 @@ FROM gcr.io/distroless/static-debian13:nonroot
 
 WORKDIR /home/nonroot
 
-COPY --from=build /app/my-app /home/nonroot/my-app
+COPY --from=build /app/my-app /usr/local/bin/my-app
 
 ENV LOG_OUTPUT=json \
-    DB_URL=/home/nonroot/db.sqlite3
+    DB_URL=/home/nonroot/db.sqlite3 \
+    MIGRATE_ON_START=true
 
 USER nonroot:nonroot
 
 EXPOSE 8080
 
-CMD ["/home/nonroot/my-app"]
+ENTRYPOINT ["/usr/local/bin/my-app"]
