@@ -30,7 +30,11 @@ templ head(title string) {
 templ body(content templ.Component) {
 	<body class="flex min-h-screen flex-col bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
 		<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4">Skip to content</a>
-		<div id="error-region"></div>
+		<!-- A persistent live region: the container keeps role="alert" and only
+		     its content is swapped, so screen readers announce each error. -->
+		<div id="error-region" role="alert">
+			<div id="error-message"></div>
+		</div>
 		<main id="main-content" class="grow">
 			@content
 		</main>

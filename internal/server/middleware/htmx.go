@@ -11,9 +11,9 @@ import (
 const htmxRequestHeader = "HX-Request"
 
 // WriteError writes an error response. For htmx requests the body is an HTML
-// fragment that htmx swaps out-of-band into the layout's #error-region, leaving
+// fragment that htmx swaps out-of-band into the layout's #error-message, leaving
 // the element that issued the request untouched. Every other client receives a
-// plain-text response.
+// full error page.
 func WriteError(logger *slog.Logger, w http.ResponseWriter, r *http.Request, status int, message string) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -74,8 +74,9 @@ func TestHome_RendersHTMX4(t *testing.T) {
 
 	body := rec.Body.String()
 	assert.Regexp(t, `src="/assets/js/htmx@v4\.[0-9.]+min\.js"`, body)
-	// The page needs the out-of-band target for error responses.
-	assert.Contains(t, body, `id="error-region"`)
+	// The page needs the persistent live region and its out-of-band target.
+	assert.Contains(t, body, `id="error-region" role="alert"`)
+	assert.Contains(t, body, `id="error-message"`)
 
 	// Config removed in htmx 4 must not creep back in.
 	for _, removed := range []string{"responseHandling", "methodsThatUseUrlParams", "includeIndicatorStyles"} {
@@ -146,7 +147,7 @@ func TestCount_ClearsErrorRegion(t *testing.T) {
 	h.Count(rec, req)
 
 	body := rec.Body.String()
-	assert.Contains(t, body, `id="error-region"`)
+	assert.Contains(t, body, `id="error-message"`)
 	assert.Contains(t, body, `hx-swap-oob="true"`)
 }
 
@@ -180,7 +181,7 @@ func TestCount_RejectsOversizedBody(t *testing.T) {
 
 	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
-	assert.Contains(t, rec.Body.String(), `id="error-region"`)
+	assert.Contains(t, rec.Body.String(), `id="error-message"`)
 }
 
 func TestCount_RejectsOutOfRangeValues(t *testing.T) {

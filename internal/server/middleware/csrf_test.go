@@ -36,6 +36,6 @@ func TestCSRF_HTMXRequestGetsOutOfBandError(t *testing.T) {
 	require.False(t, called, "cross-origin request must not reach the handler")
 	require.Equal(t, http.StatusForbidden, rec.Code)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
-	assert.Contains(t, rec.Body.String(), `id="error-region"`)
+	assert.Contains(t, rec.Body.String(), `id="error-message"`)
 	assert.Contains(t, rec.Body.String(), `hx-swap-oob="true"`)
 }
