@@ -43,3 +43,25 @@ func TestNew_RateLimitScope(t *testing.T) {
 	assert.Equal(t, http.StatusOK, do(http.MethodGet, "/"))
 	assert.Equal(t, http.StatusTooManyRequests, do(http.MethodGet, "/"))
 }
+
+// TestNew_HTMXNotFoundIsHTML verifies the dynamic fallback renders an error
+// fragment for htmx requests instead of the net/http plain-text 404.
+func TestNew_HTMXNotFoundIsHTML(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	handler := router.New(ctx, slog.New(slog.DiscardHandler), nil, 100, false)
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/does-not-exist", nil)
+	req.RemoteAddr = "198.51.100.1:12345"
+	req.Header.Set("HX-Request", "true")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+	assert.Contains(t, rec.Body.String(), `id="error-region"`)
+}

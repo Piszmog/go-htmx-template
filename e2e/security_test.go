@@ -20,6 +20,8 @@ func TestSecurityHeaders(t *testing.T) {
 
 	assert.Equal(t, "DENY", resp.Header.Get("X-Frame-Options"))
 	assert.Equal(t, "nosniff", resp.Header.Get("X-Content-Type-Options"))
+	assert.Equal(t, "same-origin", resp.Header.Get("Cross-Origin-Opener-Policy"))
+	assert.Equal(t, "same-origin", resp.Header.Get("Cross-Origin-Resource-Policy"))
 	assert.Equal(t, "strict-origin-when-cross-origin", resp.Header.Get("Referrer-Policy"))
 	assert.Contains(t, resp.Header.Get("Permissions-Policy"), "geolocation=()")
 
