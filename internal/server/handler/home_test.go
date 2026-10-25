@@ -57,6 +57,22 @@ func TestHome_ContentType(t *testing.T) {
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
 }
 
+func TestHome_UsesExplicitAccessiblePalette(t *testing.T) {
+	t.Parallel()
+
+	h := newHomeHandler()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	h.Home(rec, req)
+
+	body := rec.Body.String()
+	assert.Contains(t, body, "bg-white")
+	assert.Contains(t, body, "text-slate-900")
+	assert.Contains(t, body, "dark:bg-slate-950")
+	assert.NotContains(t, body, "text-indigo-200")
+}
+
 func TestHome_ContainsWelcomeText(t *testing.T) {
 	t.Parallel()
 

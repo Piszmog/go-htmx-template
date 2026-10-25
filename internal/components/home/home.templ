@@ -5,7 +5,7 @@ import "strconv"
 templ Page(count int) {
 	<div class="text-center">
 		<h1 class="text-5xl font-bold">Welcome!</h1>
-		<p class="text-indigo-200 mt-4">This is a simple home screen.</p>
+		<p class="mt-4 text-slate-600 dark:text-slate-300">This is a simple home screen.</p>
 		@Counter(count)
 		@GreetButton()
 	</div>
@@ -33,7 +33,7 @@ templ Counter(count int) {
 				class="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:opacity-50">
 				Increment
 			</button>
-			<span id="counter-spinner" class="htmx-indicator ml-2 text-sm text-indigo-200">Saving…</span>
+			<span id="counter-spinner" class="htmx-indicator ml-2 text-sm text-slate-500 dark:text-slate-400">Saving…</span>
 		</form>
 	</div>
 }

@@ -18,8 +18,8 @@ func TestCounter_RendersWithInitialValue(t *testing.T) {
 	_, err := page.Goto(getFullPath("/"))
 	require.NoError(t, err)
 
-	// The counter is process-global, so assert the rendered shape rather than a
-	// specific value. This keeps the test independent of execution order.
+	// The counter is round-tripped through the form, so assert the rendered
+	// shape rather than a specific value.
 	text, err := page.Locator("#counter p").InnerText()
 	require.NoError(t, err)
 	assert.Regexp(t, `^Count: [0-9]+$`, text)
