@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"time"
 )
@@ -16,9 +15,6 @@ type readinessResponse struct {
 // Ready reports whether the application can serve traffic. Unlike Health, it
 // checks the database and is intended for readiness probes.
 func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Type", "application/json")
-
 	status := http.StatusOK
 	response := readinessResponse{Status: "ok"}
 
@@ -36,8 +32,5 @@ func (h *Handler) Ready(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.logger.ErrorContext(r.Context(), "failed to encode readiness response", "error", err)
-	}
+	h.writeJSON(w, r, status, response)
 }

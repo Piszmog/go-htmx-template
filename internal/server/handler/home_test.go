@@ -21,40 +21,18 @@ func newHomeHandler() *handler.Handler {
 	return handler.New(slog.New(slog.DiscardHandler), nil)
 }
 
-func TestHome_StatusCode(t *testing.T) {
+// TestHome_Headers asserts everything the handler decides before the body:
+// status, cacheability, and the type and length of the buffered render.
+func TestHome_Headers(t *testing.T) {
 	t.Parallel()
 
-	h := newHomeHandler()
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-
-	h.Home(rec, req)
+	newHomeHandler().Home(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
-}
-
-func TestHome_NoStore(t *testing.T) {
-	t.Parallel()
-
-	h := newHomeHandler()
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	h.Home(rec, req)
-
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
-}
-
-func TestHome_ContentType(t *testing.T) {
-	t.Parallel()
-
-	h := newHomeHandler()
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-
-	h.Home(rec, req)
-
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+	assert.Equal(t, strconv.Itoa(rec.Body.Len()), rec.Header().Get("Content-Length"))
 }
 
 func TestHome_UsesExplicitAccessiblePalette(t *testing.T) {

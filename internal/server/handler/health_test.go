@@ -2,12 +2,12 @@ package handler_test
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,13 +48,10 @@ func TestHealth(t *testing.T) {
 			},
 		},
 		{
-			name: "returns valid JSON structure with version field",
+			name: "sets an accurate content length",
 			validate: func(t *testing.T, rec *httptest.ResponseRecorder) {
 				t.Helper()
-				var result map[string]string
-				err := json.NewDecoder(rec.Body).Decode(&result)
-				require.NoError(t, err)
-				assert.Equal(t, "dev", result["version"])
+				assert.Equal(t, strconv.Itoa(rec.Body.Len()), rec.Header().Get("Content-Length"))
 			},
 		},
 	}
@@ -101,6 +98,7 @@ func TestReady_Healthy(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	assert.Equal(t, strconv.Itoa(rec.Body.Len()), rec.Header().Get("Content-Length"))
 	assert.JSONEq(t, `{"status":"ok"}`, rec.Body.String())
 }
 
@@ -119,6 +117,7 @@ func TestReady_Unhealthy(t *testing.T) {
 
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	assert.Equal(t, strconv.Itoa(rec.Body.Len()), rec.Header().Get("Content-Length"))
 	assert.JSONEq(t, `{"status":"unavailable"}`, rec.Body.String())
 }
 
