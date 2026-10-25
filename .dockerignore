@@ -21,7 +21,7 @@ e2e
 # Local dev runtime files
 .env
 .env.example
-*.sqlite3
+*.sqlite3*
 *.sh
 
 # Build artifacts / temp

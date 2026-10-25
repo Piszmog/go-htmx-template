@@ -34,7 +34,7 @@ jobs:
           if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
             LATEST_TAG="v0.0.0"
           fi
-          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Calculate new version
@@ -65,15 +65,30 @@ jobs:
               ;;
           esac
           NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "Calculated new version: $NEW_VERSION (from $LATEST_TAG using $INCREMENT increment)"
       - name: Announce new version
         run: |
           echo "::notice title=New Release Version::Releasing ${{ steps.version.outputs.new_version }} (increment: ${{ github.event.inputs.increment }})"
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache-dependency-path: 'go.sum'
+      - run: go mod download
+      - name: Generate
+        run: go tool templ generate -path ./internal/components && go tool sqlc generate
+      - name: Test
+        run: go test ./...
   tag:
     name: Tag
     runs-on: ubuntu-latest
-    needs: [calculate-version]
+    needs: [calculate-version, test]
     steps:
       - name: Checkout
         uses: actions/checkout@v6

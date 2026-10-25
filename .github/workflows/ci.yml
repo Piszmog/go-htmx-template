@@ -1,4 +1,6 @@
 name: CI
+permissions:
+  contents: read
 on:
   push:
     branches:
@@ -43,6 +45,8 @@ jobs:
       - run: go mod download
       - name: Generate
         run: go tool templ generate -path ./internal/components && go tool sqlc generate
+      - name: Repo checks
+        run: bash scripts/repo_test.sh
       - name: Test
         run: go test -race ./...
   e2e:

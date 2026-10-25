@@ -22,8 +22,6 @@ Then you can upgrade your module dependencies with
 go mod tidy
 go get -u ./...
 go get -u tool
-# To upgrade test dependencies, run
-go get -u all
 ```
 
 Finally, you can proceed to generate sqlc and templ files
@@ -142,6 +140,7 @@ Per-IP rate limiting prevents abuse and helps protect against DoS attacks.
 - **Default limit:** 50 requests per minute per IP address
 - **Scope:** Dynamic routes only; `/assets/` and `/health` do not consume the budget
 - **Algorithm:** Token bucket with in-memory storage
+- **Per-instance:** Each replica enforces its own budget; use a shared store for multi-instance deployments
 - **Auto-cleanup:** Inactive IP limiters are cleaned up every 10 minutes
 - **Configuration:** Set `RATE_LIMIT` environment variable to customize
 - **Headers:** Returns `Retry-After` computed from the configured rate when the limit is exceeded
