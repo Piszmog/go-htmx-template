@@ -5,6 +5,7 @@ package e2e_test
 import (
 	"bufio"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -14,7 +15,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -312,8 +312,10 @@ func waitForHealthCheck(baseURL string) error {
 					continue
 				}
 
-				bodyStr := string(body)
-				if strings.Contains(bodyStr, `"version"`) && strings.Contains(bodyStr, `"dev"`) {
+				var health struct {
+					Version string `json:"version"`
+				}
+				if err := json.Unmarshal(body, &health); err == nil && health.Version != "" {
 					fmt.Println("✓ App health check passed")
 					return nil
 				}
@@ -326,16 +328,11 @@ func waitForHealthCheck(baseURL string) error {
 
 // migrateDB applies the embedded migrations with the app binary, so the tests
 // exercise the same path as production and need no external tooling.
-func migrateDB(dbRelPath string) error {
-	abs, err := filepath.Abs(dbRelPath)
-	if err != nil {
-		return fmt.Errorf("resolve db path: %w", err)
-	}
+func migrateDB(dbPath string) error {
 	cmd := exec.Command(appBin, "migrate")
-	cmd.Dir = "../"
-	cmd.Env = append(os.Environ(), "DB_URL="+abs)
+	cmd.Env = append(os.Environ(), "DB_URL="+dbPath)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("migrate %s: %w\n%s", dbRelPath, err, out)
+		return fmt.Errorf("migrate %s: %w\n%s", dbPath, err, out)
 	}
 	return nil
 }
