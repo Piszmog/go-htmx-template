@@ -1,1 +1,2 @@
--- TODO: fill this what you need for E2E testing
+-- Add fixtures for E2E tests here. The template's handlers do not use the
+-- authors table yet, so no seed data is required by default.

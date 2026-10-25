@@ -1,4 +1,6 @@
 name: CI
+permissions:
+  contents: read
 on:
   push:
     branches:
@@ -43,6 +45,14 @@ jobs:
       - run: go mod download
       - name: Generate
         run: go tool templ generate -path ./internal/components && go tool sqlc generate
+      - name: Repo checks
+        run: bash scripts/repo_test.sh
+      - name: Script tests
+        run: |
+          # The tooling/scripts PR adds this suite; skip it on branches that do not have it yet.
+          if [ -f scripts/scripts_test.sh ]; then
+            bash scripts/scripts_test.sh
+          fi
       - name: Test
         run: go test -race ./...
   e2e:
