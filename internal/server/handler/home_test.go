@@ -113,6 +113,20 @@ func TestCount_ContainsCounterFragment(t *testing.T) {
 	assert.Contains(t, body, "Count: ")
 }
 
+func TestCount_ClearsErrorRegion(t *testing.T) {
+	t.Parallel()
+
+	h := newHomeHandler()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", nil)
+	rec := httptest.NewRecorder()
+
+	h.Count(rec, req)
+
+	body := rec.Body.String()
+	assert.Contains(t, body, `id="error-region"`)
+	assert.Contains(t, body, `hx-swap-oob="true"`)
+}
+
 //nolint:paralleltest // shares package-level counter; two sequential calls must not be interleaved
 func TestCount_IncrementsOnEachCall(t *testing.T) {
 	h := newHomeHandler()
