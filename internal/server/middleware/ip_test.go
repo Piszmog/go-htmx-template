@@ -94,16 +94,28 @@ func TestGetClientIP_WithProxyHeaders(t *testing.T) {
 			expected:   "203.0.113.1",
 		},
 		{
-			name:       "uses first IP from X-Forwarded-For chain",
+			name:       "uses rightmost IP from X-Forwarded-For chain",
 			remoteAddr: "10.0.0.1:12345",
 			headers:    map[string]string{"X-Forwarded-For": "203.0.113.1, 70.41.3.18, 198.51.100.178"},
+			expected:   "198.51.100.178",
+		},
+		{
+			name:       "ignores client-supplied leftmost IP",
+			remoteAddr: "10.0.0.1:12345",
+			headers:    map[string]string{"X-Forwarded-For": "1.2.3.4, 198.51.100.178"},
+			expected:   "198.51.100.178",
+		},
+		{
+			name:       "skips invalid rightmost entry",
+			remoteAddr: "10.0.0.1:12345",
+			headers:    map[string]string{"X-Forwarded-For": "203.0.113.1, not-an-ip"},
 			expected:   "203.0.113.1",
 		},
 		{
 			name:       "trims whitespace from X-Forwarded-For",
 			remoteAddr: "10.0.0.1:12345",
 			headers:    map[string]string{"X-Forwarded-For": "  203.0.113.1  , 70.41.3.18"},
-			expected:   "203.0.113.1",
+			expected:   "70.41.3.18",
 		},
 		{
 			name:       "strips port from X-Forwarded-For",

@@ -16,7 +16,10 @@ import (
 
 const defaultRateLimit = 50
 
-var errInvalidRateLimit = errors.New("invalid RATE_LIMIT value")
+var (
+	errInvalidRateLimit         = errors.New("invalid RATE_LIMIT value")
+	errInvalidTrustProxyHeaders = errors.New("invalid TRUST_PROXY_HEADERS value")
+)
 
 func main() {
 	logger := log.New(
@@ -47,13 +50,18 @@ func run(logger *slog.Logger) error {
 		return err
 	}
 
+	trustProxyHeaders, err := parseTrustProxyHeaders()
+	if err != nil {
+		return err
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	svr := server.New(
 		logger,
 		":"+port,
-		server.WithRouter(router.New(ctx, logger, database, rateLimit)),
+		server.WithRouter(router.New(ctx, logger, database, rateLimit, trustProxyHeaders)),
 	)
 
 	return svr.StartAndWait()
@@ -62,6 +70,18 @@ func run(logger *slog.Logger) error {
 func openDatabase() (db.Database, error) {
 	url := envOrDefault("DB_URL", "./db.sqlite3")
 	return db.New(url)
+}
+
+func parseTrustProxyHeaders() (bool, error) {
+	raw := os.Getenv("TRUST_PROXY_HEADERS")
+	if raw == "" {
+		return false, nil
+	}
+	trusted, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, fmt.Errorf("%w: %s", errInvalidTrustProxyHeaders, raw)
+	}
+	return trusted, nil
 }
 
 func parseRateLimit() (int, error) {

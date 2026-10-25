@@ -58,6 +58,7 @@ The application can be configured using environment variables. For local develop
 | `LOG_OUTPUT` | `text` | Log format: `text` or `json` |
 | `DB_URL` | `./db.sqlite3` | Path to SQLite database file |
 | `RATE_LIMIT` | `50` | Requests per minute per IP address |
+| `TRUST_PROXY_HEADERS` | `false` | Trust `X-Forwarded-For` / `X-Real-IP` from a single reverse proxy |
 
 ### Example
 

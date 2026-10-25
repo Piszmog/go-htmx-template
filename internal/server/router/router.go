@@ -9,15 +9,15 @@ import (
 	"go-htmx-template/internal/dist"
 	"go-htmx-template/internal/server/handler"
 	"go-htmx-template/internal/server/middleware"
-	"go-htmx-template/internal/version"
 )
 
-// New creates a new router with the given context, logger, database, and rate limit.
-func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLimit int) http.Handler {
+// New creates a new router with the given context, logger, database, rate limit,
+// and proxy header trust setting.
+func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLimit int, trustProxyHeaders bool) http.Handler {
 	h := handler.New(logger, database)
 
 	ipCfg := middleware.IPConfig{
-		TrustProxyHeaders: version.Value != "dev",
+		TrustProxyHeaders: trustProxyHeaders,
 	}
 
 	mux := http.NewServeMux()
