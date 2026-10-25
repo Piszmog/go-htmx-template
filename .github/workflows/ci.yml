@@ -61,6 +61,7 @@ jobs:
         browser:
           - chromium
           - firefox
+          - webkit
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-go@v6
@@ -70,6 +71,10 @@ jobs:
       - run: go mod download
       - name: Generate
         run: make generate
+      # The tests install their own browser; only WebKit needs OS packages too.
+      - name: Install WebKit system dependencies
+        if: matrix.browser == 'webkit'
+        run: go run github.com/mxschmitt/playwright-go/cmd/playwright install --with-deps webkit
       - run: go test ./e2e -tags=e2e
         env:
           BROWSER: ${{ matrix.browser }}
