@@ -39,11 +39,11 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **Tailwind CSS**: `go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css`
 
 ### Database Migrations
-- **Create migration**: `go run github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1 create -ext sql -dir internal/db/migrations <name>`
+- **Create migration**: `go run -tags sqlite github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1 create -ext sql -dir internal/db/migrations <name>`
 - **Migration files**: Creates two files: `<timestamp>_<name>.up.sql` and `<timestamp>_<name>.down.sql`
 - **Up migrations**: Write schema changes in `.up.sql` (e.g., `CREATE TABLE`, `ALTER TABLE`)
 - **Down migrations**: Write rollback logic in `.down.sql` (e.g., `DROP TABLE`)
-- **Auto-run**: `air` runs `./migrate.sh` automatically on each rebuild (see `.air.toml` `pre_cmd`). The server itself does **not** migrate on startup.
+- **Auto-run**: `air` runs `./migrate.sh` automatically on each rebuild (see `.air.toml` `pre_cmd`). The server applies the embedded migrations on startup only when `MIGRATE_ON_START=true` (the Docker image sets it).
 - **Manual run**: `./migrate.sh -p sqlite -u ./db.sqlite3` (up) or add `-d down -s 1` for rollback
 - **Migration naming**: Use descriptive names (e.g., `add_users_table`, `add_email_to_authors`)
 
@@ -194,6 +194,7 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **LOG_LEVEL**: debug, info, warn, error (default: info; case-insensitive)
 - **LOG_OUTPUT**: text, json (default: text; case-insensitive)
 - **DB_URL**: Database file path (default: ./db.sqlite3)
+- **MIGRATE_ON_START**: Apply embedded migrations before serving (default: false)
 - **RATE_LIMIT**: Requests per minute per IP (default: 50)
 - **TRUST_PROXY_HEADERS**: Trust `X-Forwarded-For`/`X-Real-IP` from a single proxy (default: false)
 
