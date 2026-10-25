@@ -34,7 +34,12 @@ func (d *localDB) Close() error {
 }
 
 func newLocalDB(path string) (*localDB, error) {
-	db, err := sql.Open("sqlite", "file:"+path+"?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
+	dsn, err := sqliteDSN(path)
+	if err != nil {
+		return nil, err
+	}
+
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("opening database: %w", err)
 	}

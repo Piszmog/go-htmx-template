@@ -4,6 +4,7 @@ go 1.27.3
 
 require (
 	github.com/a-h/templ v0.3.1070
+	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/mxschmitt/playwright-go v0.6201.1
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/time v0.16.0
