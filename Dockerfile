@@ -18,16 +18,22 @@ RUN go tool templ generate -path ./internal/components \
 
 # Build static binary
 RUN CGO_ENABLED=0 go build \
+    -trimpath \
     -ldflags="-s -w -X go-htmx-template/internal/version.Value=${VERSION}" \
     -o my-app ./cmd/server
 
 ## Deploy
-FROM gcr.io/distroless/static-debian13
+FROM gcr.io/distroless/static-debian13:nonroot
 
-WORKDIR /
+WORKDIR /home/nonroot
 
-COPY --from=build /app/my-app /my-app
+COPY --from=build /app/my-app /home/nonroot/my-app
+
+ENV LOG_OUTPUT=json \
+    DB_URL=/home/nonroot/db.sqlite3
+
+USER nonroot:nonroot
 
 EXPOSE 8080
 
-CMD ["/my-app"]
+CMD ["/home/nonroot/my-app"]
