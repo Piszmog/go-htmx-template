@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -133,11 +132,11 @@ func TestLogging_Middleware(t *testing.T) {
 	}
 }
 
-func TestLogging_NoLogWhenNotDebugLevel(t *testing.T) {
+func TestLogging_LogsAtInfoLevel(t *testing.T) {
 	t.Parallel()
 	var logBuffer bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuffer, &slog.HandlerOptions{
-		Level: slog.LevelInfo, // Set to INFO, not DEBUG
+		Level: slog.LevelInfo,
 	}))
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -152,8 +151,8 @@ func TestLogging_NoLogWhenNotDebugLevel(t *testing.T) {
 	mw.ServeHTTP(rec, req)
 
 	logOutput := logBuffer.String()
-	// Should not log at debug level when logger is set to INFO
-	assert.Empty(t, strings.TrimSpace(logOutput))
+	assert.Contains(t, logOutput, "Handled request")
+	assert.Contains(t, logOutput, "status=200")
 }
 
 // TestLogging_PanicStillLogsAccess verifies the access log is emitted even when

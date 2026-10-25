@@ -7,11 +7,13 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go-htmx-template/internal/db"
 	"go-htmx-template/internal/server/handler"
 )
 
@@ -70,6 +72,66 @@ func TestHealth(t *testing.T) {
 			tt.validate(t, rec)
 		})
 	}
+}
+
+func TestHealth_NoStore(t *testing.T) {
+	t.Parallel()
+
+	h := handler.New(slog.New(slog.DiscardHandler), nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+
+	h.Health(rec, req)
+
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+}
+
+func TestReady_Healthy(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.New(filepath.Join(t.TempDir(), "ready.sqlite3"))
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, database.Close()) })
+
+	h := handler.New(slog.New(slog.DiscardHandler), database)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+
+	h.Ready(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	assert.JSONEq(t, `{"status":"ok"}`, rec.Body.String())
+}
+
+func TestReady_Unhealthy(t *testing.T) {
+	t.Parallel()
+
+	database, err := db.New(filepath.Join(t.TempDir(), "ready.sqlite3"))
+	require.NoError(t, err)
+	require.NoError(t, database.Close())
+
+	h := handler.New(slog.New(slog.DiscardHandler), database)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+
+	h.Ready(rec, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	assert.JSONEq(t, `{"status":"unavailable"}`, rec.Body.String())
+}
+
+func TestReady_NilDatabase(t *testing.T) {
+	t.Parallel()
+
+	h := handler.New(slog.New(slog.DiscardHandler), nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/readyz", nil)
+	rec := httptest.NewRecorder()
+
+	h.Ready(rec, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 }
 
 func TestHealth_NoDatabase(t *testing.T) {

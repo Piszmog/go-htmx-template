@@ -74,6 +74,26 @@ func TestNew_AssetsDoNotListDirectories(t *testing.T) {
 	require.Equal(t, http.StatusOK, do("/assets/favicon.svg"))
 }
 
+// TestNew_ReadyzRoute verifies the readiness endpoint is wired outside the
+// rate-limited dynamic routes and reports an unavailable database.
+func TestNew_ReadyzRoute(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	handler := router.New(ctx, slog.New(slog.DiscardHandler), nil, 100, false)
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/readyz", nil)
+	req.RemoteAddr = "198.51.100.1:12345"
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+}
+
 // TestNew_HTMXNotFoundIsHTML verifies the dynamic fallback renders an error
 // fragment for htmx requests instead of the net/http plain-text 404.
 func TestNew_HTMXNotFoundIsHTML(t *testing.T) {

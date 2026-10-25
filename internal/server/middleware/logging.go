@@ -16,7 +16,7 @@ func Logging(logger *slog.Logger, ipCfg IPConfig) Handler {
 			// Deferred so a panic that unwinds through this middleware still
 			// produces an access log entry once Recovery writes the 500.
 			defer func() {
-				logger.Debug(
+				logger.Info(
 					"Handled request",
 					slog.String("method", r.Method),
 					slog.String("path", r.URL.Path),
