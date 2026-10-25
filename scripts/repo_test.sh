@@ -13,14 +13,48 @@ pass() {
 	echo "ok - $*"
 }
 
+# job_block prints the YAML block for a top-level job in a workflow file.
+# Matching on the block instead of a literal line keeps these checks working
+# when keys are reordered or reindented.
+job_block() { # job, file
+	awk -v job="  $1:" '
+		$0 == job { found = 1; next }
+		found && /^  [A-Za-z0-9_-]+:/ { exit }
+		found { print }
+	' "$2"
+}
+
+# needs_contains asserts that a job depends on another job. It accepts both the
+# inline (`needs: [a, b]`) and block (`needs:\n  - a`) YAML forms.
+needs_contains() { # file, job, dependency
+	job_block "$2" "$1" |
+		awk '
+			/^    needs:/ { wanted = 1; buf = $0; next }
+			wanted && /^      - / { buf = buf " " $0; next }
+			wanted { wanted = 0 }
+			END { print buf }
+		' |
+		tr -d '[],' |
+		grep -qw -- "$3"
+}
+
 grep -q '^permissions:' .github/workflows/ci.yml ||
 	fail "ci.yml must declare top-level token permissions"
 
-grep -q '^  test:' .github/workflows/release.yml ||
+[ -n "$(job_block test .github/workflows/release.yml)" ] ||
 	fail "release.yml must have a test job"
 
-grep -q 'needs: \[calculate-version, test\]' .github/workflows/release.yml ||
+[ -n "$(job_block lint .github/workflows/release.yml)" ] ||
+	fail "release.yml must have a lint job"
+
+needs_contains .github/workflows/release.yml tag test ||
 	fail "release tag job must depend on the test job"
+
+needs_contains .github/workflows/release.yml tag lint ||
+	fail "release tag job must depend on the lint job"
+
+needs_contains .github/workflows/release.yml publish release ||
+	fail "publish must depend on the release job"
 
 grep -q '^\*\.sqlite3\*$' .dockerignore ||
 	fail ".dockerignore must exclude SQLite sidecar files"
