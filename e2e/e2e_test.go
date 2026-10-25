@@ -441,6 +441,9 @@ func newBrowserContextAndPage(t *testing.T, options playwright.BrowserNewContext
 	if err != nil {
 		t.Fatalf("could not create new page: %v", err)
 	}
+	// Parallel tests contend for CPU on CI runners, and the 30s navigation
+	// default is tight enough to flake on firefox under that load.
+	p.SetDefaultNavigationTimeout(60000)
 	return ctx, p
 }
 
