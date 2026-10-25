@@ -45,7 +45,7 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLim
 	dynamic.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteError(logger, w, r, http.StatusNotFound, "404 Not Found")
 	}))
-	mux.Handle("/", middleware.RateLimit(ctx, logger, rateLimit, middleware.DefaultMaxEntries, ipCfg)(dynamic))
+	mux.Handle("/", middleware.RateLimit(ctx, logger, rateLimit, middleware.DefaultMaxEntries, ipCfg)(middleware.CSP(logger)(dynamic)))
 
 	// Middleware chain
 	hdlr := http.Handler(mux)
@@ -55,7 +55,7 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLim
 			middleware.WriteError(logger, w, r, http.StatusInternalServerError, "500 Internal Server Error")
 		})),
 		middleware.BodyLimit(maxRequestBodyBytes),
-		middleware.Security(logger, ipCfg),
+		middleware.SecurityHeaders(ipCfg),
 		middleware.CSRF(logger, ipCfg),
 	)(hdlr)
 
