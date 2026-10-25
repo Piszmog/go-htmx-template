@@ -1,0 +1,31 @@
+package core
+
+import (
+	"net/http"
+	"strconv"
+
+	"go-htmx-template/internal/version"
+)
+
+// ErrorPage renders a full-page error for non-htmx clients. It deliberately
+// contains no scripts so it can be rendered outside the CSP nonce middleware.
+templ ErrorPage(status int, message string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<meta name="color-scheme" content="light dark"/>
+			<title>{ strconv.Itoa(status) } { http.StatusText(status) }</title>
+			<link href={ "/assets/css/output@" + version.Value + ".css" } rel="stylesheet"/>
+		</head>
+		<body class="flex min-h-screen items-center justify-center bg-white p-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+			<main class="max-w-xl text-center">
+				<p class="text-sm font-semibold tracking-wide text-slate-500 uppercase">{ strconv.Itoa(status) }</p>
+				<h1 class="mt-2 text-3xl font-bold">{ http.StatusText(status) }</h1>
+				<p class="mt-4 text-slate-600 dark:text-slate-300">{ message }</p>
+				<a href="/" class="mt-6 inline-block rounded bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700">Go home</a>
+			</main>
+		</body>
+	</html>
+}

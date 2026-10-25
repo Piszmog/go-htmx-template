@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
@@ -12,6 +13,12 @@ func Recovery(logger *slog.Logger, onPanic http.Handler) Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if err := recover(); err != nil {
+					// http.ErrAbortHandler is a sentinel used to abort a response
+					// without logging. Let net/http handle it.
+					if errValue, ok := err.(error); ok && errors.Is(errValue, http.ErrAbortHandler) {
+						panic(err)
+					}
+
 					logger.Error(
 						"panic recovered",
 						slog.Any("panic", err),

@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go-htmx-template/internal/server/handler"
+	"go-htmx-template/internal/server/middleware"
 )
 
 func newHomeHandler() *handler.Handler {
@@ -32,6 +33,18 @@ func TestHome_StatusCode(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
+func TestHome_NoStore(t *testing.T) {
+	t.Parallel()
+
+	h := newHomeHandler()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	h.Home(rec, req)
+
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+}
+
 func TestHome_ContentType(t *testing.T) {
 	t.Parallel()
 
@@ -42,6 +55,22 @@ func TestHome_ContentType(t *testing.T) {
 	h.Home(rec, req)
 
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
+}
+
+func TestHome_UsesExplicitAccessiblePalette(t *testing.T) {
+	t.Parallel()
+
+	h := newHomeHandler()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	h.Home(rec, req)
+
+	body := rec.Body.String()
+	assert.Contains(t, body, "bg-white")
+	assert.Contains(t, body, "text-slate-900")
+	assert.Contains(t, body, "dark:bg-slate-950")
+	assert.NotContains(t, body, "text-indigo-200")
 }
 
 func TestHome_ContainsWelcomeText(t *testing.T) {
@@ -157,6 +186,51 @@ func TestCount_IncrementsSubmittedValue(t *testing.T) {
 	count, ok := extractCountFromBody(rec.Body.String())
 	require.True(t, ok, "could not extract count from response")
 	assert.Equal(t, 42, count)
+}
+
+func TestCount_RejectsOversizedBody(t *testing.T) {
+	t.Parallel()
+
+	h := newHomeHandler()
+	form := url.Values{"count": {strings.Repeat("1", 2<<20)}}
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("HX-Request", "true")
+	rec := httptest.NewRecorder()
+
+	middleware.BodyLimit(1<<20)(http.HandlerFunc(h.Count)).ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
+	assert.Contains(t, rec.Body.String(), `id="error-region"`)
+}
+
+func TestCount_RejectsOutOfRangeValues(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		value string
+	}{
+		{name: "negative", value: "-1"},
+		{name: "max int", value: "9223372036854775807"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			h := newHomeHandler()
+			form := url.Values{"count": {tt.value}}
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/count", strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			rec := httptest.NewRecorder()
+
+			h.Count(rec, req)
+
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
+		})
+	}
 }
 
 func TestCount_RejectsInvalidValue(t *testing.T) {

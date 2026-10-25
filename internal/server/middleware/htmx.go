@@ -15,16 +15,20 @@ const htmxRequestHeader = "HX-Request"
 // the element that issued the request untouched. Every other client receives a
 // plain-text response.
 func WriteError(logger *slog.Logger, w http.ResponseWriter, r *http.Request, status int, message string) {
-	if r.Header.Get(htmxRequestHeader) != "true" {
-		http.Error(w, message, status)
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(status)
+
+	if r.Header.Get(htmxRequestHeader) == "true" {
+		if err := core.ErrorRegion(message).Render(r.Context(), w); err != nil {
+			// The status line is already written, so the response cannot be corrected.
+			logger.ErrorContext(r.Context(), "failed to render error fragment", "error", err)
+		}
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-
-	if err := core.ErrorRegion(message).Render(r.Context(), w); err != nil {
-		// The status line is already written, so the response cannot be corrected.
-		logger.ErrorContext(r.Context(), "failed to render error fragment", "error", err)
+	if err := core.ErrorPage(status, message).Render(r.Context(), w); err != nil {
+		logger.ErrorContext(r.Context(), "failed to render error page", "error", err)
 	}
 }
