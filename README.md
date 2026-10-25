@@ -11,7 +11,7 @@ In the top right, select the dropdown __Use this template__ and select __Create 
 Once cloned, run the `update_module.sh` script to change the module to your module name.
 
 ```shell
-./update_module "github.com/me/my-new-module"
+./update_module.sh "github.com/me/my-new-module"
 ```
 
 Once ran, delete the script.
@@ -37,9 +37,12 @@ go tool templ generate -path ./internal/components
 
 `air` is the primary way to run the applications for local development. It watches for file changes. When a file changes, it will rebuild and re-run the application. On each rebuild, `air` also applies any pending DB migrations via `./migrate.sh`.
 
-If running the binary directly (not via `air`), run migrations first:
+If running the binary directly (not via `air`), build the generated artifacts and run migrations first:
 
 ```shell
+go tool templ generate -path ./internal/components
+go tool sqlc generate
+go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css
 ./migrate.sh -p sqlite -u ./db.sqlite3
 ```
 
@@ -47,7 +50,7 @@ When the application is running, go to http://localhost:8080/
 
 ## Environment Variables
 
-The application can be configured using environment variables. For local development, copy `.env.example` to `.env` and customize as needed.
+The application reads environment variables from the process; it does **not** load `.env` automatically. Export them in your shell or use a tool such as [direnv](https://direnv.net/). The example file documents the available variables.
 
 ### Available Variables
 
@@ -63,10 +66,9 @@ The application can be configured using environment variables. For local develop
 ### Example
 
 ```bash
-# .env
-PORT=3000
-LOG_LEVEL=debug
-DB_URL=/data/myapp.db
+export PORT=3000
+export LOG_LEVEL=debug
+export DB_URL=/data/myapp.db
 ```
 
 ## Endpoints
@@ -190,76 +192,17 @@ Comprehensive security tests are included in `e2e/security_test.go`:
 
 ```text
 .
-├── .air.toml
-├── .github
-│   └── workflows
-│       ├── ci.yml
-│       └── release.yml
-├── .gitignore
-├── .goreleaser.yaml
-├── AGENTS.md
+├── cmd/server/              # application entrypoint
+├── internal/
+│   ├── components/          # templ components (generated *.go is gitignored)
+│   ├── db/                  # sqlc queries and migrations
+│   ├── dist/                # embedded assets (CSS is generated)
+│   ├── log/                 # slog setup
+│   ├── server/              # handlers, middleware, router, HTTP server
+│   └── version/             # build-time version
+├── e2e/                     # Playwright end-to-end tests
+├── styles/input.css         # Tailwind source
 ├── Dockerfile
-├── cmd
-│   └── server
-│       └── main.go
-├── internal
-│   ├── components
-│   │   ├── core
-│   │   │   └── html.templ
-│   │   └── home
-│   │       └── home.templ
-│   ├── db
-│   │   ├── db.go
-│   │   ├── local.go
-│   │   ├── migrations
-│   │   │   ├── 20240407203525_init.down.sql
-│   │   │   └── 20240407203525_init.up.sql
-│   │   └── queries
-│   │       ├── db.go
-│   │       ├── models.go
-│   │       ├── query.sql
-│   │       └── query.sql.go
-│   ├── dist
-│   │   ├── assets
-│   │   │   ├── css
-│   │   │   │   └── output@dev.css
-│   │   │   └── js
-│   │   │       └── htmx@v4.0.0.min.js
-│   │   └── dist.go
-│   ├── log
-│   │   └── log.go
-│   ├── server
-│   │   ├── handler
-│   │   │   ├── handler.go
-│   │   │   ├── health.go
-│   │   │   ├── health_test.go
-│   │   │   └── home.go
-│   │   ├── middleware
-│   │   │   ├── cache.go
-│   │   │   ├── csrf.go
-│   │   │   ├── logging.go
-│   │   │   ├── logging_test.go
-│   │   │   ├── middleware.go
-│   │   │   ├── ratelimit.go
-│   │   │   ├── recovery.go
-│   │   │   ├── recovery_test.go
-│   │   │   ├── response_writer.go
-│   │   │   └── security.go
-│   │   ├── router
-│   │   │   └── router.go
-│   │   └── server.go
-│   └── version
-│       └── version.go
-├── e2e
-│   ├── e2e_test.go
-│   ├── home_test.go
-│   ├── security_test.go
-│   └── testdata
-│       └── seed.sql
-├── styles
-│   └── input.css
-├── go.mod
-├── go.sum
 ├── migrate.sh
 ├── sqlc.yml
 ├── update_module.sh
@@ -342,10 +285,11 @@ with then environment variables `LOG_LEVEL` and `LOG_OUTPUT`. The logger will wr
 This contains everything related to the HTTP server in `internal/server/`. 
 
 The server is configured with:
-- **Graceful shutdown** - Handles `SIGINT` with 10-second grace period
+- **Graceful shutdown** - Handles `SIGINT` and `SIGTERM` with a 10-second grace period
 - **Timeout protection** - ReadHeaderTimeout, ReadTimeout, WriteTimeout, IdleTimeout
 - **Size limits** - MaxHeaderBytes prevents oversized header attacks
-- **Functional options** - Customize timeouts via `WithReadTimeout`, `WithWriteTimeout`, etc.
+- **Structured errors** - `http.Server.ErrorLog` is routed through `slog`
+- **Options** - `WithRouter` sets the handler; timeout values are package constants
 
 See `internal/server/server.go` for configuration details.
 
@@ -359,12 +303,13 @@ routers such as [gorilla/mux](https://github.com/gorilla/mux).
 
 This package contains middleware applied to all routes in a chain:
 
-1. **Recovery** - Catches panics and logs stack traces
-2. **Logging** - Structured request/response logging with duration and status
-3. **Security** - Sets security headers (X-Frame-Options, CSP, etc.)
-4. **RateLimit** - Per-IP rate limiting (configurable via `RATE_LIMIT` env var)
+1. **Logging** - Structured request/response logging with duration and status
+2. **Recovery** - Catches panics, logs the stack trace, and renders a 500
+3. **BodyLimit** - Caps request bodies at 1 MiB
+4. **Security** - Sets security headers (CSP, COOP, CORP, etc.)
 5. **CSRF** - Cross-origin request protection using Go 1.25+ native implementation
-6. **Cache** - Applied only to static assets under `/assets/`
+
+`RateLimit` wraps only the dynamic handler (`/` and `/count`); `/health` and `/assets/` are exempt. `Cache` applies only to static assets under `/assets/`.
 
 See `internal/server/router/router.go` for the middleware chain configuration.
 
