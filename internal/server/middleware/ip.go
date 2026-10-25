@@ -34,6 +34,33 @@ func GetClientIP(r *http.Request, cfg IPConfig) string {
 	return stripPort(r.RemoteAddr)
 }
 
+// ipv6PrefixBits is the prefix length used to bucket IPv6 clients.
+const ipv6PrefixBits = 64
+
+// RateLimitKey normalizes a client IP for rate limiting. IPv6 addresses are
+// bucketed by /64 because a single client usually controls a whole /64 and
+// could otherwise rotate addresses to reset its budget. IPv4 and unparsable
+// values are returned unchanged.
+func RateLimitKey(ip string) string {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil {
+		return ip
+	}
+
+	// ::ffff:203.0.113.7 and 203.0.113.7 are the same client, so they must land
+	// in the same bucket.
+	addr = addr.Unmap()
+	if !addr.Is6() {
+		return addr.String()
+	}
+
+	prefix, err := addr.Prefix(ipv6PrefixBits)
+	if err != nil {
+		return ip
+	}
+	return prefix.String()
+}
+
 // parseXForwardedFor extracts and validates the rightmost IP from the
 // X-Forwarded-For header. The header format is "client, proxy1, proxy2"; the
 // rightmost entry is the address observed by the nearest trusted proxy, while
