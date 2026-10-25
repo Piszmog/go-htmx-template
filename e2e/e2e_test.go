@@ -324,14 +324,16 @@ func waitForHealthCheck(baseURL string) error {
 	}
 }
 
+// migrateDB applies the embedded migrations with the app binary, so the tests
+// exercise the same path as production and need no external tooling.
 func migrateDB(dbRelPath string) error {
 	abs, err := filepath.Abs(dbRelPath)
 	if err != nil {
 		return fmt.Errorf("resolve db path: %w", err)
 	}
-	cmd := exec.Command("./migrate.sh", "-p", "sqlite", "-u", abs)
+	cmd := exec.Command(appBin, "migrate")
 	cmd.Dir = "../"
-	cmd.Env = os.Environ()
+	cmd.Env = append(os.Environ(), "DB_URL="+abs)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("migrate %s: %w\n%s", dbRelPath, err, out)
 	}

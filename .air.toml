@@ -27,7 +27,7 @@ tmp_dir = "tmp"
   pre_cmd = [
     "pkill -f './tmp/main' || true",
     "make generate",
-    "./migrate.sh -p sqlite -u \"${DB_URL:-./db.sqlite3}\"",
+    "go run ./cmd/server migrate",
   ]
   rerun = true
   rerun_delay = 500
