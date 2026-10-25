@@ -24,25 +24,24 @@ go get -u ./...
 go get -u tool
 ```
 
-Finally, you can proceed to generate sqlc and templ files
+Finally, generate the templ components, sqlc queries, and Tailwind CSS:
 
 ```shell
-go tool sqlc generate
-go tool templ generate -path ./internal/components
+make generate
 ```
 
 ## Run
 
 `air` is the primary way to run the applications for local development. It watches for file changes. When a file changes, it will rebuild and re-run the application. On each rebuild, `air` also applies any pending DB migrations via `./migrate.sh`.
 
-If running the binary directly (not via `air`), build the generated artifacts and run migrations first:
+If running the binary directly (not via `air`), generate the artifacts and run migrations first:
 
 ```shell
-go tool templ generate -path ./internal/components
-go tool sqlc generate
-go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css
+make generate
 ./migrate.sh -p sqlite -u ./db.sqlite3
 ```
+
+`make generate` regenerates the templ components, the sqlc queries, and the Tailwind CSS. It accepts `VERSION` (default `dev`, used in the CSS filename) and `MINIFY=1` for production builds.
 
 The application binary can also apply the embedded migrations directly:
 
@@ -92,6 +91,8 @@ This endpoint is suitable for basic liveness checks from load balancers or monit
 
 `templ`, `sqlc`, and `tailwindcss` (via [`go-tw`](https://github.com/Piszmog/go-tw)) are included as `go tool` directives. When running
 the application for the first time, it may take a little time as `templ`, `sqlc` and `go-tw` are being downloaded and installed.
+
+The `Makefile` wraps the common commands: `make generate`, `make build`, `make test`, `make test-e2e`, `make lint`, and `make migrate`.
 
 ### air
 
@@ -223,6 +224,7 @@ Comprehensive security tests are included in `e2e/security_test.go`:
 ├── e2e/                     # Playwright end-to-end tests
 ├── styles/input.css         # Tailwind source
 ├── Dockerfile
+├── Makefile                 # generate, build, test, lint, migrate targets
 ├── migrate.sh
 ├── sqlc.yml
 ├── update_module.sh
