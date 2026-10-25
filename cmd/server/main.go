@@ -26,6 +26,7 @@ func main() {
 		log.GetLevel(),
 		log.GetOutput(),
 	)
+	slog.SetDefault(logger)
 
 	if err := run(logger); err != nil {
 		logger.Error("server error", "error", err)

@@ -3,6 +3,7 @@ package log
 import (
 	"log/slog"
 	"os"
+	"strings"
 )
 
 // New creates a new logger with the given level and output.
@@ -50,7 +51,7 @@ const (
 )
 
 func toLevel(level string) Level {
-	switch level {
+	switch strings.ToLower(strings.TrimSpace(level)) {
 	case "debug":
 		return LevelDebug
 	case "info":
@@ -81,7 +82,7 @@ const (
 )
 
 func toOutput(output string) Output {
-	switch output {
+	switch strings.ToLower(strings.TrimSpace(output)) {
 	case "json":
 		return OutputJSON
 	case "text":

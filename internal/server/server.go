@@ -37,6 +37,7 @@ func New(logger *slog.Logger, addr string, opts ...Option) *Server {
 		IdleTimeout:       idleTimeout,
 		ReadHeaderTimeout: readHeaderTimeout,
 		MaxHeaderBytes:    maxHeaderBytes,
+		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 
 	server := &Server{srv: srv, logger: logger, errCh: make(chan error, 1)}
@@ -96,6 +97,12 @@ func (s *Server) gracefulShutdown() error {
 	defer cancel()
 
 	if err := s.srv.Shutdown(ctx); err != nil {
+		if closeErr := s.srv.Close(); closeErr != nil {
+			return errors.Join(
+				fmt.Errorf("server shutdown: %w", err),
+				fmt.Errorf("server close: %w", closeErr),
+			)
+		}
 		return fmt.Errorf("server shutdown: %w", err)
 	}
 
