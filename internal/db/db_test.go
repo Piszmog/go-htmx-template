@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -53,6 +54,36 @@ func TestNew_QueriesRoundTrip(t *testing.T) {
 	require.Len(t, authors, 1)
 	assert.Equal(t, created.ID, authors[0].ID)
 	assert.Equal(t, "Ada Lovelace", authors[0].Name)
+}
+
+func TestNew_AcceptsFileURL(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "test.sqlite3")
+
+	database, err := db.New("file:" + path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, database.Close()) })
+
+	_, err = os.Stat(path)
+	require.NoError(t, err, "database should be created at the requested path")
+}
+
+func TestNew_PathWithSpecialCharacters(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not allow '?' and '#' in file names")
+	}
+
+	path := filepath.Join(t.TempDir(), "odd?name#x.sqlite3")
+
+	database, err := db.New(path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, database.Close()) })
+
+	_, err = os.Stat(path)
+	require.NoError(t, err, "database should be created at the requested path")
 }
 
 func TestNew_InvalidPath(t *testing.T) {
