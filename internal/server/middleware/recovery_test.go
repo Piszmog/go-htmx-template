@@ -108,6 +108,24 @@ func TestRecovery_PanicHandling(t *testing.T) {
 	}
 }
 
+func TestRecovery_RePanicsErrAbortHandler(t *testing.T) {
+	t.Parallel()
+
+	logger := slog.New(slog.NewTextHandler(&bytes.Buffer{}, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	handler := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		panic(http.ErrAbortHandler)
+	})
+
+	mw := middleware.Recovery(logger, panicHandler)(handler)
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/test", nil)
+	rec := httptest.NewRecorder()
+
+	assert.PanicsWithValue(t, http.ErrAbortHandler, func() {
+		mw.ServeHTTP(rec, req)
+	})
+}
+
 func TestRecovery_NoPanic(t *testing.T) {
 	t.Parallel()
 	var logBuffer bytes.Buffer

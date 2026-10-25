@@ -22,6 +22,7 @@ func New(logger *slog.Logger, database db.Database) *Handler {
 }
 
 func (h *Handler) html(ctx context.Context, w http.ResponseWriter, status int, t templ.Component) {
+	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 
