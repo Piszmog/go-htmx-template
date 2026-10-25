@@ -22,11 +22,16 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLim
 
 	mux := http.NewServeMux()
 
-	// Routes
+	// Routes that should not consume the per-IP rate limit budget.
 	mux.HandleFunc(newPath(http.MethodGet, "/health"), h.Health)
 	mux.Handle(newPath(http.MethodGet, "/assets/"), middleware.CacheMiddleware(http.FileServer(http.FS(dist.AssetsDir))))
-	mux.HandleFunc(newPath(http.MethodGet, "/{$}"), h.Home)
-	mux.HandleFunc(newPath(http.MethodPost, "/count"), h.Count)
+
+	// Dynamic routes share the per-IP budget. A page load would otherwise spend
+	// several tokens on its assets and a single exhausted bucket would break it.
+	dynamic := http.NewServeMux()
+	dynamic.HandleFunc(newPath(http.MethodGet, "/{$}"), h.Home)
+	dynamic.HandleFunc(newPath(http.MethodPost, "/count"), h.Count)
+	mux.Handle("/", middleware.RateLimit(ctx, logger, rateLimit, middleware.DefaultMaxEntries, ipCfg)(dynamic))
 
 	// Middleware chain
 	hdlr := http.Handler(mux)
@@ -36,7 +41,6 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLim
 		})),
 		middleware.Logging(logger, ipCfg),
 		middleware.Security(logger, ipCfg),
-		middleware.RateLimit(ctx, logger, rateLimit, middleware.DefaultMaxEntries, ipCfg),
 		middleware.CSRF(logger, ipCfg),
 	)(hdlr)
 

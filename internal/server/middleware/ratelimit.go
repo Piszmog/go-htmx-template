@@ -4,7 +4,9 @@ import (
 	"container/list"
 	"context"
 	"log/slog"
+	"math"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -24,6 +26,8 @@ const DefaultMaxEntries = 10000
 // a token bucket algorithm with in-memory storage. maxEntries caps the number
 // of IPs tracked simultaneously; use defaultMaxEntries if unsure.
 func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, maxEntries int, ipCfg IPConfig) Handler {
+	retryAfter := max(1, int(math.Ceil(secondsPerMinute/float64(requestsPerMinute))))
+
 	rl := &ipRateLimiter{
 		limiters:   make(map[string]*list.Element),
 		order:      list.New(),
@@ -47,7 +51,7 @@ func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, 
 					slog.String("path", r.URL.Path),
 				)
 
-				w.Header().Set("Retry-After", "60")
+				w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
 				WriteError(logger, w, r, http.StatusTooManyRequests, "Rate limit exceeded. Please try again later.")
 				return
 			}
@@ -98,7 +102,7 @@ func (rl *ipRateLimiter) allow(ip string) bool {
 			evicted, ok := rl.order.Remove(back).(*ipEntry)
 			if ok {
 				delete(rl.limiters, evicted.ip)
-				rl.logger.Warn("rate limiter evicted entry at capacity",
+				rl.logger.Debug("rate limiter evicted entry at capacity",
 					slog.String("evicted_ip", evicted.ip),
 					slog.Int("max_entries", rl.maxEntries),
 				)
