@@ -16,7 +16,7 @@ const maxCounterValue = 1_000_000_000
 
 // Home handles the home page.
 func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
-	h.html(r.Context(), w, http.StatusOK, core.HTML("Example Site", home.Page(0)))
+	h.html(w, r, http.StatusOK, core.HTML("Example Site", home.Page(0)))
 }
 
 // Count increments the submitted counter and returns the updated Counter fragment.
@@ -42,5 +42,5 @@ func (h *Handler) Count(w http.ResponseWriter, r *http.Request) {
 		count = parsed
 	}
 
-	h.html(r.Context(), w, http.StatusOK, templ.Join(home.Counter(count+1), core.ErrorClear()))
+	h.html(w, r, http.StatusOK, templ.Join(home.Counter(count+1), core.ErrorClear()))
 }

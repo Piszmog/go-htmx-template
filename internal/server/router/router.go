@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
 
 	"go-htmx-template/internal/db"
@@ -28,22 +29,22 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLim
 	mux := http.NewServeMux()
 
 	// Routes that should not consume the per-IP rate limit budget.
-	mux.HandleFunc(newPath(http.MethodGet, "/health"), h.Health)
-	mux.HandleFunc(newPath(http.MethodGet, "/readyz"), h.Ready)
+	mux.Handle("/health", allow(logger, http.MethodGet)(http.HandlerFunc(h.Health)))
+	mux.Handle("/readyz", allow(logger, http.MethodGet)(http.HandlerFunc(h.Ready)))
 	fileServer := middleware.CacheMiddleware(http.FileServer(http.FS(dist.AssetsDir)))
-	mux.Handle(newPath(http.MethodGet, "/assets/"), assetHandler(logger, fileServer))
-	mux.HandleFunc(newPath(http.MethodGet, "/favicon.ico"), func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("/assets/", allow(logger, http.MethodGet)(assetHandler(logger, fileServer)))
+	mux.Handle("/favicon.ico", allow(logger, http.MethodGet)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/assets/favicon.svg", http.StatusPermanentRedirect)
-	})
+	})))
 
 	// Dynamic routes share the per-IP budget. A page load would otherwise spend
 	// several tokens on its assets and a single exhausted bucket would break it.
 	dynamic := http.NewServeMux()
-	dynamic.HandleFunc(newPath(http.MethodGet, "/{$}"), h.Home)
-	dynamic.HandleFunc(newPath(http.MethodPost, "/count"), h.Count)
-	dynamic.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	dynamic.Handle("/{$}", allow(logger, http.MethodGet)(http.HandlerFunc(h.Home)))
+	dynamic.Handle("/count", allow(logger, http.MethodPost)(http.HandlerFunc(h.Count)))
+	dynamic.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		middleware.WriteError(logger, w, r, http.StatusNotFound, "404 Not Found")
-	})
+	}))
 	mux.Handle("/", middleware.RateLimit(ctx, logger, rateLimit, middleware.DefaultMaxEntries, ipCfg)(dynamic))
 
 	// Middleware chain
@@ -61,6 +62,34 @@ func New(ctx context.Context, logger *slog.Logger, database db.Database, rateLim
 	return hdlr
 }
 
+// allow restricts a handler to the given methods and answers 405 with an Allow
+// header otherwise. ServeMux only produces 405 when no other pattern matches
+// the path, and the dynamic catch-all matches everything, so method rejection
+// has to happen here. HEAD is implied by GET, matching ServeMux's behaviour.
+func allow(logger *slog.Logger, methods ...string) middleware.Handler {
+	allowed := make([]string, 0, len(methods)+1)
+	for _, method := range methods {
+		allowed = append(allowed, method)
+		if method == http.MethodGet {
+			allowed = append(allowed, http.MethodHead)
+		}
+	}
+
+	allowHeader := strings.Join(allowed, ", ")
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if slices.Contains(allowed, r.Method) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			w.Header().Set("Allow", allowHeader)
+			middleware.WriteError(logger, w, r, http.StatusMethodNotAllowed, "405 Method Not Allowed")
+		})
+	}
+}
+
 // assetHandler serves embedded files and rejects directory requests so the
 // asset tree cannot be enumerated.
 func assetHandler(logger *slog.Logger, fileServer http.Handler) http.Handler {
@@ -74,8 +103,4 @@ func assetHandler(logger *slog.Logger, fileServer http.Handler) http.Handler {
 
 		fileServer.ServeHTTP(w, r)
 	})
-}
-
-func newPath(method string, path string) string {
-	return method + " " + path
 }
