@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -136,4 +137,20 @@ func TestNew_MethodNotAllowed(t *testing.T) {
 		"unknown paths must still 404")
 	assert.Equal(t, http.StatusOK, serve(t, handler, http.MethodHead, "/health").Code,
 		"HEAD must be served by GET routes")
+}
+
+// TestNew_SmallResponsesAreNotCompressed pins the interaction between the
+// handlers and the compression middleware: a JSON probe answers with a couple
+// of dozen bytes, so it needs no gzip frame and must keep its Content-Length.
+func TestNew_SmallResponsesAreNotCompressed(t *testing.T) {
+	t.Parallel()
+
+	handler := newTestHandler(t, 50)
+
+	for _, path := range []string{"/health", "/readyz"} {
+		rec := serve(t, handler, http.MethodGet, path, "Accept-Encoding", "gzip")
+
+		assert.Empty(t, rec.Header().Get("Content-Encoding"), "%s must not be compressed", path)
+		assert.Equal(t, strconv.Itoa(rec.Body.Len()), rec.Header().Get("Content-Length"), path)
+	}
 }

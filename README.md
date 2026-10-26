@@ -326,10 +326,11 @@ routers such as [gorilla/mux](https://github.com/gorilla/mux).
 This package contains middleware applied to all routes in a chain:
 
 1. **Logging** - Structured request/response logging with duration and status
-2. **Recovery** - Catches panics, logs the stack trace, and renders a 500
-3. **BodyLimit** - Caps request bodies at 1 MiB
-4. **SecurityHeaders** - Sets the headers every response carries (COOP, CORP, HSTS, baseline CSP)
-5. **CSRF** - Cross-origin request protection using Go 1.25+ native implementation
+2. **Compress** - Gzips compressible responses for clients that accept it
+3. **Recovery** - Catches panics, logs the stack trace, and renders a 500
+4. **BodyLimit** - Caps request bodies at 1 MiB
+5. **SecurityHeaders** - Sets the headers every response carries (COOP, CORP, HSTS, baseline CSP)
+6. **CSRF** - Cross-origin request protection using Go 1.25+ native implementation
 
 `CSP` is deliberately not in that chain: it wraps only the dynamic handler and replaces the baseline CSP
 with one that trusts a fresh nonce, which templ stamps onto the inline htmx configuration script. Static
