@@ -1,0 +1,33 @@
+name: Dependabot Auto-merge
+on: pull_request_target
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: dependabot-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  enable-auto-merge:
+    name: Enable Auto-merge
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Workflows triggered by Dependabot on pull_request get a read-only token,
+    # so this runs in the base branch context instead. It must never check out
+    # or execute anything from the pull request.
+    if: >-
+      github.repository == 'Piszmog/go-htmx-template' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.draft == false
+    steps:
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"
+      # The main ruleset requires one approving review. The update is gated by
+      # the required CI checks, so approve it here.
+      - name: Approve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr review --approve "$PR_URL" --body "Dependabot update gated by the required CI checks."
