@@ -75,7 +75,10 @@ jobs:
       - name: Install WebKit system dependencies
         if: matrix.browser == 'webkit'
         run: go run github.com/mxschmitt/playwright-go/cmd/playwright install --with-deps webkit
-      - run: go test ./e2e -tags=e2e
+      # One page at a time: four parallel pages in a single firefox process on a
+      # shared runner intermittently never deliver the load event, which no
+      # navigation timeout can fix. The suite takes ~12s serially.
+      - run: go test ./e2e -tags=e2e -parallel 1
         env:
           BROWSER: ${{ matrix.browser }}
   release-dryrun:
