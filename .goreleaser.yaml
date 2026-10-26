@@ -5,14 +5,14 @@ dist: goreleaser-dist
 before:
   hooks:
     - go mod download
-    - make generate VERSION={{.Version}} MINIFY=1
+    - make generate VERSION={{ .Tag }} MINIFY=1
 
 builds:
   - main: ./cmd/server
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X go-htmx-template/internal/version.Value={{.Version}}
+      - -s -w -X go-htmx-template/internal/version.Value={{ .Tag }}
     goos:
       - linux
       - windows

@@ -358,12 +358,17 @@ Update `input.css` with any custom CSS you need and it will be included in the o
 
 ### Version
 
-This package in `internal/version/` allows you to set a version at build time. If not set, the version defaults to 
-`dev`. To set the version run the following command,
+This package in `internal/version/` allows you to set a version at build time. If not set, the version defaults to
+`dev`. The version is also part of the generated CSS filename (`output@<version>.css`), so generate the assets with
+the same version before building:
 
 ```shell
-go build -o ./app -ldflags="-X go-htmx-template/internal/version.Value=1.0.0" ./cmd/server
+make generate VERSION=v1.0.0
+go build -o ./app -ldflags="-X go-htmx-template/internal/version.Value=v1.0.0" ./cmd/server
 ```
+
+GoReleaser takes the version from the git tag (`{{ .Tag }}`), so releases, archives, and container images all report
+the same `vX.Y.Z` string.
 
 ## Github Workflow
 
