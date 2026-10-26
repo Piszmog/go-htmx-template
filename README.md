@@ -51,6 +51,32 @@ go run ./cmd/server migrate
 
 When the application is running, go to http://localhost:8080/
 
+### Prerequisites
+
+- Install [air](https://github.com/air-verse/air#installation)
+
+`templ`, `sqlc`, and `tailwindcss` (via [`go-tw`](https://github.com/Piszmog/go-tw)) are included as `go tool` directives. When running
+the application for the first time, it may take a little time as `templ`, `sqlc` and `go-tw` are being downloaded and installed.
+
+The `Makefile` wraps the common commands: `make generate`, `make build`, `make test`, `make test-e2e`, `make lint`, and `make migrate`.
+
+### air
+
+`air` has been configured with the file `.air.toml` to allow live reloading of the application 
+when a file changes.
+
+To run, install `air`
+
+```shell
+go install github.com/air-verse/air@latest
+```
+
+Then simply run the command
+
+```shell
+air
+```
+
 ## Environment Variables
 
 The application reads environment variables from the process; it does **not** load `.env` automatically. Export them in your shell or use a tool such as [direnv](https://direnv.net/). The example file documents the available variables.
@@ -77,39 +103,15 @@ export DB_URL=/data/myapp.db
 
 ## Endpoints
 
-### Health Check
+### Health and Readiness
 
-The application provides a basic health check endpoint:
+- **GET /health** - Liveness. Returns `200 OK` with the build version in a JSON body
+  (`{"version":"dev"}` when built without ldflags) and never touches the database.
+- **GET /readyz** - Readiness. Pings the database and returns `200 OK` with `{"status":"ok"}`, or
+  `503 Service Unavailable` with `{"status":"unavailable"}` when the database cannot be reached.
 
-- **GET /health** - Returns `200 OK` with `{"version":"dev"}`
-
-This endpoint is suitable for basic liveness checks from load balancers or monitoring systems.
-
-### Prerequisites
-
-- Install [air](https://github.com/air-verse/air#installation)
-
-`templ`, `sqlc`, and `tailwindcss` (via [`go-tw`](https://github.com/Piszmog/go-tw)) are included as `go tool` directives. When running
-the application for the first time, it may take a little time as `templ`, `sqlc` and `go-tw` are being downloaded and installed.
-
-The `Makefile` wraps the common commands: `make generate`, `make build`, `make test`, `make test-e2e`, `make lint`, and `make migrate`.
-
-### air
-
-`air` has been configured with the file `.air.toml` to allow live reloading of the application 
-when a file changes.
-
-To run, install `air`
-
-```shell
-go install github.com/air-verse/air@latest
-```
-
-Then simply run the command
-
-```shell
-air
-```
+Use `/health` for liveness probes and `/readyz` for readiness probes. Neither endpoint consumes the
+rate-limit budget.
 
 ## Deploy
 
@@ -139,7 +141,7 @@ A few different technologies are configured to help getting off the ground easie
   - Vendored at `internal/dist/assets/js/htmx@v4.0.0.min.js`
   - The script `upgrade_htmx.sh` is available to make upgrading easier; it pulls the bundle from npm (via jsdelivr) and validates it before replacing anything
 - [air](https://github.com/air-verse/air) for live reloading of the application.
-- [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations (build/dev-time tool via `./migrate.sh`; not a runtime dependency of the server binary).
+- [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations. The migrations are embedded and applied by the `migrate` subcommand or `MIGRATE_ON_START`; `./migrate.sh` is the equivalent shell entrypoint.
 - [playwright-go](https://github.com/playwright-community/playwright-go) for E2E testing.
 
 ## Security
@@ -160,7 +162,7 @@ The application uses Go 1.25+'s native `http.CrossOriginProtection` for CSRF def
 Per-IP rate limiting prevents abuse and helps protect against DoS attacks.
 
 - **Default limit:** 50 requests per minute per IP address
-- **Scope:** Dynamic routes only; `/assets/` and `/health` do not consume the budget
+- **Scope:** Dynamic routes only; `/assets/`, `/health`, and `/readyz` do not consume the budget
 - **Algorithm:** Token bucket with in-memory storage
 - **Per-instance:** Each replica enforces its own budget; use a shared store for multi-instance deployments
 - **Auto-cleanup:** Inactive IP limiters are cleaned up every 10 minutes
@@ -249,19 +251,20 @@ This is where `templ` files live in `internal/components/`. Anything you want to
 
 ### DB
 
-This is the directory in `internal/db/` that `sqlc` generates to. Update `queries.sql` to build 
-your database operations.
+`sqlc` generates `internal/db/queries` from `internal/db/queries/query.sql` and the schema in
+`internal/db/migrations`. Add queries to `query.sql`, then run `make generate`.
 
-This project uses [golang migrate](https://github.com/golang-migrate/migrate) for DB
-migrations. `sqlc` uses the `internal/db/migrations` directory to generate DB tables.
-
-Migrations are applied by `./migrate.sh` — **the server does not migrate on startup**.
-`air` runs `migrate.sh` automatically in dev. In production, run migrations before
-starting or restarting the server:
+This project uses [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
+The migration files are embedded in the binary, so the same migrations run from the `migrate`
+subcommand, from `MIGRATE_ON_START`, and from `./migrate.sh`:
 
 ```shell
-./migrate.sh -p sqlite -u ./db.sqlite3
+go run ./cmd/server migrate    # or: make migrate
 ```
+
+`MIGRATE_ON_START=true` applies pending migrations before the server starts; the Docker image sets
+it by default. `air` runs `./migrate.sh` on every rebuild. See [Deploy](#deploy) for when to prefer
+each option.
 
 `migrate.sh` accepts `-p <protocol>`, `-u <url>`, `-d <direction>` (default: `up`),
 `-t <auth_token>`, and `-s <steps>` (for down). Run `./migrate.sh -h` for full usage.
@@ -270,8 +273,10 @@ To create a new migration pair:
 
 ```shell
 go run -tags sqlite github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1 \
-  create -ext sql -dir internal/db/migrations -seq <name>
+  create -ext sql -dir internal/db/migrations <name>
 ```
+
+The generated files are named `<timestamp>_<name>.up.sql` and `<timestamp>_<name>.down.sql`.
 
 ### Dist
 
@@ -331,7 +336,7 @@ This package contains middleware applied to all routes in a chain:
 4. **Security** - Sets security headers (CSP, COOP, CORP, etc.)
 5. **CSRF** - Cross-origin request protection using Go 1.25+ native implementation
 
-`RateLimit` wraps only the dynamic handler (`/` and `/count`); `/health` and `/assets/` are exempt. `Cache` applies only to static assets under `/assets/`.
+`RateLimit` wraps only the dynamic handler (`/` and `/count`); `/health`, `/readyz`, and `/assets/` are exempt. `CacheMiddleware` applies only to static assets under `/assets/`.
 
 See `internal/server/router/router.go` for the middleware chain configuration.
 
@@ -340,9 +345,9 @@ See `internal/server/router/router.go` for the middleware chain configuration.
 This package contains HTTP handlers for routes:
 
 - **handler.go** - Base handler struct with logger and database dependencies
-- **home.go** - Homepage handler rendering templ components
-- **health.go** - Health check endpoint (`/health`) returning version info
-- **health_test.go** - Unit tests for handler logic
+- **home.go** - Homepage handler and the `/count` counter fragment
+- **health.go** - Liveness endpoint (`/health`) returning version info
+- **ready.go** - Readiness endpoint (`/readyz`) that pings the database
 
 Handlers use dependency injection for testability and follow standard `http.HandlerFunc` signature.
 
