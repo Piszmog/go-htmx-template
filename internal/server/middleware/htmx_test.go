@@ -27,10 +27,12 @@ func TestWriteError_HTMXRequestReturnsOutOfBandFragment(t *testing.T) {
 
 	body := rec.Body.String()
 	// The fragment must target the layout placeholder out of band, otherwise htmx
-	// swaps the error into the element that issued the request.
-	assert.Contains(t, body, `id="error-region"`)
+	// swaps the error into the element that issued the request. The live region
+	// (role="alert") lives in the layout and must not be replaced, or screen
+	// readers have nothing to announce into.
+	assert.Contains(t, body, `id="error-message"`)
 	assert.Contains(t, body, `hx-swap-oob="true"`)
-	assert.Contains(t, body, `role="alert"`)
+	assert.NotContains(t, body, `role="alert"`)
 	assert.Contains(t, body, "Rate limit exceeded.")
 }
 

@@ -99,7 +99,7 @@ func TestNew_HTMXNotFoundIsHTML(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, rec.Code)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "text/html")
-	assert.Contains(t, rec.Body.String(), `id="error-region"`)
+	assert.Contains(t, rec.Body.String(), `id="error-message"`)
 }
 
 // TestNew_MethodNotAllowed verifies that a known path rejects an unsupported

@@ -1,18 +1,19 @@
 package core
 
 // ErrorRegion renders an error as an out-of-band swap that replaces the
-// #error-region placeholder in the layout. The triggering element is left
-// untouched, so a failed request never destroys the component that issued it.
+// #error-message element inside the layout's persistent #error-region live
+// region. The triggering element is left untouched, so a failed request never
+// destroys the component that issued it.
 templ ErrorRegion(message string) {
-	<div id="error-region" hx-swap-oob="true" role="alert"
+	<div id="error-message" hx-swap-oob="true"
 		class="mx-auto mt-4 w-full max-w-2xl rounded-md border border-red-400/50 bg-red-500/10 px-4 py-3 text-sm text-red-700">
 		{ message }
 	</div>
 }
 
-// ErrorClear clears the error region after a successful request. It is sent as
+// ErrorClear empties the live region after a successful request. It is sent as
 // an out-of-band swap alongside successful fragments so a previous error does
 // not stay visible until the next full page load.
 templ ErrorClear() {
-	<div id="error-region" hx-swap-oob="true" role="alert"></div>
+	<div id="error-message" hx-swap-oob="true"></div>
 }
