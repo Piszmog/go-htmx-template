@@ -29,6 +29,8 @@ appengine-generated/
 /internal/components/*/*.txt
 .idea
 *.iml
+.claude/
+.playwright-mcp/
 internal/dist/assets/css/
 *.sqlite3
 tmp/
