@@ -44,7 +44,7 @@ func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := GetClientIP(r, rl.ipCfg)
 
-			if !rl.allow(ip) {
+			if !rl.allow(RateLimitKey(ip)) {
 				logger.Warn("rate limit exceeded",
 					slog.String("ip", ip),
 					slog.String("method", r.Method),
@@ -62,7 +62,7 @@ func RateLimit(ctx context.Context, logger *slog.Logger, requestsPerMinute int, 
 }
 
 type ipEntry struct {
-	ip       string
+	key      string
 	limiter  *rate.Limiter
 	lastSeen time.Time
 }
@@ -78,13 +78,15 @@ type ipRateLimiter struct {
 	ipCfg      IPConfig
 }
 
-func (rl *ipRateLimiter) allow(ip string) bool {
+// allow consumes a token from the bucket identified by key, which is the
+// normalized client address (see RateLimitKey).
+func (rl *ipRateLimiter) allow(key string) bool {
 	now := time.Now()
 
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
-	if elem, exists := rl.limiters[ip]; exists {
+	if elem, exists := rl.limiters[key]; exists {
 		entry, ok := elem.Value.(*ipEntry)
 		if !ok {
 			rl.logger.Error("rate limiter: unexpected type in list element")
@@ -101,9 +103,9 @@ func (rl *ipRateLimiter) allow(ip string) bool {
 		if back != nil {
 			evicted, ok := rl.order.Remove(back).(*ipEntry)
 			if ok {
-				delete(rl.limiters, evicted.ip)
+				delete(rl.limiters, evicted.key)
 				rl.logger.Debug("rate limiter evicted entry at capacity",
-					slog.String("evicted_ip", evicted.ip),
+					slog.String("evicted_key", evicted.key),
 					slog.Int("max_entries", rl.maxEntries),
 				)
 			}
@@ -111,12 +113,12 @@ func (rl *ipRateLimiter) allow(ip string) bool {
 	}
 
 	entry := &ipEntry{
-		ip:       ip,
+		key:      key,
 		limiter:  rate.NewLimiter(rl.rate, rl.burst),
 		lastSeen: now,
 	}
 	elem := rl.order.PushFront(entry)
-	rl.limiters[ip] = elem
+	rl.limiters[key] = elem
 
 	return entry.limiter.Allow()
 }
@@ -145,7 +147,7 @@ func (rl *ipRateLimiter) cleanupLoop(ctx context.Context) {
 				}
 				if entry.lastSeen.Before(cutoff) {
 					rl.order.Remove(elem)
-					delete(rl.limiters, entry.ip)
+					delete(rl.limiters, entry.key)
 				}
 				elem = prev
 			}

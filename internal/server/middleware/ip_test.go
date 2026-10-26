@@ -212,3 +212,26 @@ func TestGetClientIP_WithProxyHeaders(t *testing.T) {
 		})
 	}
 }
+
+func TestRateLimitKey(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		ip   string
+		want string
+	}{
+		{name: "IPv4 unchanged", ip: "203.0.113.7", want: "203.0.113.7"},
+		{name: "IPv6 bucketed by /64", ip: "2001:db8:1:2::1", want: "2001:db8:1:2::/64"},
+		{name: "IPv4-mapped IPv6 unmapped", ip: "::ffff:203.0.113.7", want: "203.0.113.7"},
+		{name: "IPv6 loopback bucketed", ip: "::1", want: "::/64"},
+		{name: "unparsable unchanged", ip: "not-an-ip", want: "not-an-ip"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, tt.want, middleware.RateLimitKey(tt.ip))
+		})
+	}
+}

@@ -168,3 +168,26 @@ func itoa(n int) string {
 	}
 	return string(buf[pos:])
 }
+
+// TestRateLimit_BucketsIPv6ByPrefix proves that rotating the interface
+// identifier inside one /64 does not reset the budget, while a different /64
+// gets its own.
+func TestRateLimit_BucketsIPv6ByPrefix(t *testing.T) {
+	t.Parallel()
+
+	h := newHandler(t, 2, 1000)
+
+	for i := range 2 {
+		if code := request(h, "[2001:db8:1:2::1]"); code != http.StatusOK {
+			t.Fatalf("request %d: want 200, got %d", i+1, code)
+		}
+	}
+
+	if code := request(h, "[2001:db8:1:2::99]"); code != http.StatusTooManyRequests {
+		t.Fatalf("a new address in the same /64 must share the budget: want 429, got %d", code)
+	}
+
+	if code := request(h, "[2001:db8:1:3::1]"); code != http.StatusOK {
+		t.Fatalf("a different /64 must get its own budget: want 200, got %d", code)
+	}
+}
