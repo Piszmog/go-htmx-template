@@ -363,16 +363,23 @@ This package in `internal/version/` allows you to set a version at build time. I
 the same version before building:
 
 ```shell
-make generate VERSION=v1.0.0
-go build -o ./app -ldflags="-X go-htmx-template/internal/version.Value=v1.0.0" ./cmd/server
+make generate VERSION=v2026.10.0
+go build -o ./app -ldflags="-X go-htmx-template/internal/version.Value=v2026.10.0" ./cmd/server
 ```
 
 GoReleaser takes the version from the git tag (`{{ .Tag }}`), so releases, archives, and container images all report
-the same `vX.Y.Z` string.
+the same CalVer string.
 
 ## Github Workflow
 
-The repository comes with two Github workflows as well. One called `ci.yml` that lints and 
-tests your code. The other called `release.yml` that creates a tag, GitHub Release, run [GoReleaser](https://goreleaser.com/) to build and 
-attach all the binaries, and published the docker image. See release [v1.0.2](https://github.com/Piszmog/go-htmx-template/releases/tag/v1.0.2) as an example.
+The repository comes with two Github workflows. `ci.yml` lints and tests changes, dry-runs the release build, and
+builds pull request images. `release.yml` runs after `ci.yml` succeeds for a push to `main`: it calculates the next
+[CalVer](https://calver.org/) tag (`vYYYY.MM.MICRO`, e.g. `v2026.10.0`), tags the commit CI tested, runs
+[GoReleaser](https://goreleaser.com/) to build and attach all the binaries to the GitHub Release, and publishes the
+multi-arch Docker image to GHCR. Manual version bumps and semver tags are gone; every merge whose CI run succeeds
+gets its own release. Micro numbers are claimed when the tag is created, so concurrent merges may not receive them in
+merge order.
+
+See release [v1.0.2](https://github.com/Piszmog/go-htmx-template/releases/tag/v1.0.2) for the format used before the
+CalVer switch.
 
