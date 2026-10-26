@@ -1,136 +1,146 @@
 name: Release
 on:
-  workflow_dispatch:
-    inputs:
-      increment:
-        description: 'Version increment type'
-        required: true
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-        default: patch
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: release
+  # Serialize releases for the same commit, but let different merges release
+  # concurrently. A workflow-wide lock would drop releases when merges queue up.
+  group: release-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: false
+env:
+  # The commit CI tested. Under workflow_run, github.sha is main's head rather
+  # than the tested commit, so check it out explicitly.
+  SHA: ${{ github.event.workflow_run.head_sha }}
 jobs:
-  calculate-version:
+  version:
     name: Calculate Version
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
-      new_version: ${{ steps.version.outputs.new_version }}
+      base_version: ${{ steps.version.outputs.base_version }}
+      reuse_tag: ${{ steps.version.outputs.reuse_tag }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ env.SHA }}
           fetch-depth: 0
-      - name: Get latest release
-        id: latest_release
-        run: |
-          LATEST_TAG=$(gh release list --limit 1 --json tagName --jq '.[0].tagName')
-          if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "null" ]; then
-            LATEST_TAG="v0.0.0"
-          fi
-          echo "latest_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Calculate new version
         id: version
         run: |
-          LATEST_TAG="${{ steps.latest_release.outputs.latest_tag }}"
-          INCREMENT="${{ github.event.inputs.increment }}"
-          # Remove 'v' prefix if present
-          VERSION=${LATEST_TAG#v}
-          # Split version into parts
-          IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
-          MAJOR=${VERSION_PARTS[0]:-0}
-          MINOR=${VERSION_PARTS[1]:-0}
-          PATCH=${VERSION_PARTS[2]:-0}
-          # Calculate new version based on increment type
-          case $INCREMENT in
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              ;;
-            minor)
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              ;;
-            patch)
-              PATCH=$((PATCH + 1))
-              ;;
-          esac
-          NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
-          echo "Calculated new version: $NEW_VERSION (from $LATEST_TAG using $INCREMENT increment)"
-      - name: Announce new version
-        run: |
-          echo "::notice title=New Release Version::Releasing ${{ steps.version.outputs.new_version }} (increment: ${{ github.event.inputs.increment }})"
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
-          cache-dependency-path: 'go.sum'
-      - run: go mod download
-      - name: Generate
-        run: make generate-go
-      - name: Lint
-        uses: golangci/golangci-lint-action@v9
-        with:
-          version: v2.15.0
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
-          cache-dependency-path: 'go.sum'
-      - run: go mod download
-      - name: Generate
-        run: make generate-go
-      - name: Test
-        run: go test ./...
+          # Reuse a CalVer tag already on this commit so re-running a failed
+          # release does not create a duplicate version.
+          existing=$(git tag --points-at "$SHA" |
+            grep -E '^v[0-9]{4}\.[0-9]{2}\.[0-9]+$' |
+            sort -V | tail -1 || true)
+          if [ -n "$existing" ]; then
+            echo "base_version=$existing" >> "$GITHUB_OUTPUT"
+            echo "reuse_tag=true" >> "$GITHUB_OUTPUT"
+            echo "Reusing existing tag: $existing"
+          else
+            # CalVer: vYYYY.MM.MICRO (v2026.10.0, v2026.10.1, ...). The
+            # counter resets each month because the prefix changes.
+            month="v$(date -u +%Y.%m)"
+            last=$(git tag -l "$month.*" | sed "s/^$month\.//" | { grep -E '^[0-9]+$' || true; } | sort -n | tail -1)
+            if [ -n "$last" ]; then
+              micro=$((10#$last + 1))
+            else
+              micro=0
+            fi
+            echo "base_version=$month.$micro" >> "$GITHUB_OUTPUT"
+            echo "reuse_tag=false" >> "$GITHUB_OUTPUT"
+            echo "Calculated new version: $month.$micro"
+          fi
   tag:
     name: Tag
     runs-on: ubuntu-latest
-    needs:
-      - calculate-version
-      - lint
-      - test
+    timeout-minutes: 10
+    needs: [version]
+    permissions:
+      contents: write
+    outputs:
+      final_version: ${{ steps.tag.outputs.final_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-      - name: Create Tag
-        uses: piszmog/create-tag@v1
         with:
-          version: ${{ needs.calculate-version.outputs.new_version }}
-          message: ${{ needs.calculate-version.outputs.new_version }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ env.SHA }}
+      - name: Create or reuse tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_VERSION: ${{ needs.version.outputs.base_version }}
+          REUSE_TAG: ${{ needs.version.outputs.reuse_tag }}
+        run: |
+          candidate="$BASE_VERSION"
+
+          if [ "$REUSE_TAG" = "true" ]; then
+            remote=$(git ls-remote --tags origin \
+              "refs/tags/$candidate" "refs/tags/$candidate^{}")
+            if [ -z "$remote" ]; then
+              echo "expected tag $candidate not found" >&2
+              exit 1
+            fi
+            # Annotated tags list the tag object and the peeled commit;
+            # lightweight tags list only the commit.
+            peeled=$(printf '%s\n' "$remote" |
+              awk '/\^\{\}$/ { print $1; found = 1 } { last = $1 } END { if (!found) print last }')
+            if [ "$peeled" != "$SHA" ]; then
+              echo "tag $candidate points at $peeled, not $SHA" >&2
+              exit 1
+            fi
+            echo "final_version=$candidate" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Another merge may have claimed the same CalVer while this run was
+          # queued. Claim the next free micro instead of failing the release.
+          for _ in $(seq 1 20); do
+            if [ -n "$(git ls-remote --tags origin "refs/tags/$candidate")" ]; then
+              echo "Tag $candidate already exists; trying next micro" >&2
+            elif err=$(gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+                -f "ref=refs/tags/$candidate" \
+                -f "sha=$SHA" 2>&1); then
+              echo "final_version=$candidate" >> "$GITHUB_OUTPUT"
+              echo "Created tag $candidate"
+              exit 0
+            elif ! printf '%s' "$err" | grep -qi 'already exists'; then
+              printf '%s\n' "$err" >&2
+              exit 1
+            fi
+
+            prefix="${candidate%.*}"
+            micro="${candidate##*.}"
+            candidate="$prefix.$((10#$micro + 1))"
+          done
+
+          echo "could not create a unique tag after 20 attempts" >&2
+          exit 1
+      - name: Announce final version
+        run: |
+          echo "::notice title=New Release Version::Releasing ${{ steps.tag.outputs.final_version }}"
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [ tag ]
+    timeout-minutes: 20
+    needs: [version, tag]
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ env.SHA }}
           fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
           go-version-file: 'go.mod'
+          cache-dependency-path: 'go.sum'
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:
@@ -139,18 +149,21 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use the tag this workflow claimed, which may be newer than the
+          # candidate computed before concurrent merges.
+          GORELEASER_CURRENT_TAG: ${{ needs.tag.outputs.final_version }}
   publish:
     name: Publish Docker
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
-    needs:
-      - calculate-version
-      - release
-      - tag
+    needs: [tag, release]
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
@@ -163,14 +176,16 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=${{ needs.calculate-version.outputs.new_version }}
+            type=raw,value=${{ needs.tag.outputs.final_version }}
       - uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            VERSION=${{ needs.calculate-version.outputs.new_version }}
+            VERSION=${{ needs.tag.outputs.final_version }}

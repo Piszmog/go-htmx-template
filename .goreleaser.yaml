@@ -41,6 +41,9 @@ changelog:
       - "^test:"
 
 release:
+  # Re-running a release workflow must update the existing release, not fail on
+  # already-uploaded assets.
+  replace_existing_artifacts: true
   footer: >-
 
     ---

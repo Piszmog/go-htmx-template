@@ -29,6 +29,12 @@ tmp
 goreleaser-dist
 vendor
 
+# Generated code and assets (rebuilt inside the builder)
+internal/components/*/*_templ.go
+internal/components/*/*_templ.txt
+internal/db/queries/*.go
+internal/dist/assets/css
+
 # Go workspace files (would override module downloads inside builder)
 go.work
 go.work.sum
