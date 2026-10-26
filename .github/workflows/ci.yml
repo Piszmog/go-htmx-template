@@ -23,7 +23,7 @@ jobs:
           cache-dependency-path: 'go.sum'
       - run: go mod download
       - name: Generate
-        run: go tool templ generate -path ./internal/components && go tool sqlc generate
+        run: make generate-go
       - name: Lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -44,15 +44,11 @@ jobs:
           cache-dependency-path: 'go.sum'
       - run: go mod download
       - name: Generate
-        run: go tool templ generate -path ./internal/components && go tool sqlc generate
+        run: make generate-go
       - name: Repo checks
         run: bash scripts/repo_test.sh
       - name: Script tests
-        run: |
-          # The tooling/scripts PR adds this suite; skip it on branches that do not have it yet.
-          if [ -f scripts/scripts_test.sh ]; then
-            bash scripts/scripts_test.sh
-          fi
+        run: bash scripts/scripts_test.sh
       - name: Test
         run: go test -race ./...
   e2e:
@@ -73,7 +69,7 @@ jobs:
           cache-dependency-path: 'go.sum'
       - run: go mod download
       - name: Generate
-        run: go tool templ generate -path ./internal/components && go tool sqlc generate
+        run: make generate
       - run: go test ./e2e -tags=e2e
         env:
           BROWSER: ${{ matrix.browser }}

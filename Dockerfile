@@ -11,10 +11,7 @@ RUN go mod download
 
 # Copy source and generate artifacts
 COPY ./ .
-RUN go tool templ generate -path ./internal/components \
-    && go tool go-tw -i ./styles/input.css \
-         -o ./internal/dist/assets/css/output@${VERSION}.css --minify \
-    && go tool sqlc generate
+RUN make generate VERSION=${VERSION} MINIFY=1
 
 # Build static binary
 RUN CGO_ENABLED=0 go build \

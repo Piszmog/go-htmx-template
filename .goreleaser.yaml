@@ -5,9 +5,7 @@ dist: goreleaser-dist
 before:
   hooks:
     - go mod download
-    - go tool sqlc generate
-    - go tool templ generate -path ./internal/components
-    - go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@{{.Version}}.css --minify
+    - make generate VERSION={{.Version}} MINIFY=1
 
 builds:
   - main: ./cmd/server

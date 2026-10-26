@@ -26,9 +26,7 @@ tmp_dir = "tmp"
   ]
   pre_cmd = [
     "pkill -f './tmp/main' || true",
-    "go tool templ generate -path ./internal/components",
-    "go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css",
-    "go tool sqlc generate",
+    "make generate",
     "./migrate.sh -p sqlite -u \"${DB_URL:-./db.sqlite3}\"",
   ]
   rerun = true
