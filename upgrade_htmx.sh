@@ -49,9 +49,6 @@ if ! grep -q "$clean_version" "$new_file"; then
 	exit 1
 fi
 
-sed -e "s|htmx@${old_version}\.min\.js|htmx@${new_version}.min.js|g" "./internal/components/core/html.templ" > "./internal/components/core/html.templ.tmp" \
-	&& mv "./internal/components/core/html.templ.tmp" "./internal/components/core/html.templ"
-
 sed -e "s|htmx@${old_version}\.min\.js|htmx@${new_version}.min.js|g" "./README.md" > "./README.md.tmp" \
 	&& mv "./README.md.tmp" "./README.md"
 

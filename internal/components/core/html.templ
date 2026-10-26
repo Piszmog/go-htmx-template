@@ -1,6 +1,23 @@
 package core
 
-import "go-htmx-template/internal/version"
+import (
+	"go-htmx-template/internal/dist"
+	"go-htmx-template/internal/version"
+)
+
+// htmxPath is resolved from the embedded assets at startup, so upgrading the
+// vendored bundle does not require editing this file or the upgrade script.
+//
+//nolint:gochecknoglobals // resolved once from the embedded assets
+var htmxPath = mustAssetPath("js/htmx@*.min.js")
+
+func mustAssetPath(pattern string) string {
+	path, err := dist.AssetPath(pattern)
+	if err != nil {
+		panic(err)
+	}
+	return "/assets/" + path
+}
 
 templ HTML(title string, content templ.Component) {
 	<!DOCTYPE html>
@@ -18,7 +35,7 @@ templ head(title string) {
 		<meta name="description" content="Hello world"/>
 		<link rel="icon" href="/assets/favicon.svg" type="image/svg+xml"/>
 		<title>{ title }</title>
-		<script src="/assets/js/htmx@v4.0.0.min.js" nonce={ templ.GetNonce(ctx) }></script>
+		<script src={ htmxPath } nonce={ templ.GetNonce(ctx) }></script>
 		<script nonce={ templ.GetNonce(ctx) }>
 			// htmx stamps this nonce onto any script it re-creates from a swapped fragment.
 			htmx.config.inlineScriptNonce = document.currentScript.nonce;

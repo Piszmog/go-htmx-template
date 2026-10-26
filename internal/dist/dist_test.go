@@ -25,3 +25,15 @@ func TestAssetPath_NoMatch(t *testing.T) {
 	_, err := dist.AssetPath("js/missing@*.js")
 	require.Error(t, err)
 }
+
+// TestAssetPath_MultipleMatches documents the contract callers rely on when
+// they resolve a versioned asset: a pattern must identify exactly one file, so
+// a stale vendored bundle is a hard error rather than a silent pick.
+func TestAssetPath_MultipleMatches(t *testing.T) {
+	t.Parallel()
+
+	// Matches the favicon and the js directory, plus the css directory when it
+	// has been generated, so it is ambiguous either way.
+	_, err := dist.AssetPath("*")
+	require.ErrorContains(t, err, "multiple")
+}
