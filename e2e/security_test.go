@@ -14,7 +14,8 @@ import (
 func TestSecurityHeaders(t *testing.T) {
 	t.Parallel()
 
-	resp, err := http.Get(baseURL.String())
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(baseURL.String())
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
