@@ -20,19 +20,22 @@ func discardLogger() *slog.Logger {
 	return slog.New(slog.DiscardHandler)
 }
 
-func TestSecurity_StaticHeaders(t *testing.T) {
+// serve runs a middleware-wrapped no-op handler and returns the recorder.
+func serve(t *testing.T, mw middleware.Handler, req *http.Request) *httptest.ResponseRecorder {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})).ServeHTTP(rec, req)
+	return rec
+}
+
+func TestSecurityHeaders_StaticHeaders(t *testing.T) {
 	t.Parallel()
 
-	cfg := middleware.IPConfig{TrustProxyHeaders: false}
-	mw := middleware.Security(discardLogger(), cfg)
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	rec := serve(t, middleware.SecurityHeaders(middleware.IPConfig{}), req)
 
 	assert.Equal(t, "DENY", rec.Header().Get("X-Frame-Options"))
 	assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
@@ -43,64 +46,64 @@ func TestSecurity_StaticHeaders(t *testing.T) {
 	assert.Equal(t, "none", rec.Header().Get("X-Permitted-Cross-Domain-Policies"))
 }
 
-func TestSecurity_CSPContainsNonce(t *testing.T) {
+// TestSecurityHeaders_CSPOverriddenByCSP proves the chain emits a single CSP
+// header, with the nonce, when both middlewares are applied.
+func TestSecurityHeaders_CSPOverriddenByCSP(t *testing.T) {
 	t.Parallel()
 
-	cfg := middleware.IPConfig{TrustProxyHeaders: false}
-	mw := middleware.Security(discardLogger(), cfg)
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
+	mw := middleware.SecurityHeaders(middleware.IPConfig{})(middleware.CSP(discardLogger())(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		},
+	)))
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	mw.ServeHTTP(rec, req)
+
+	cspHeaders := rec.Header().Values("Content-Security-Policy")
+	require.Len(t, cspHeaders, 1, "a second CSP header would be ignored by browsers")
+	assert.Contains(t, cspHeaders[0], "'nonce-")
+	assert.NotEmpty(t, extractSecurityNonce(cspHeaders[0]))
+}
+
+// TestSecurityHeaders_BaselineCSPHasNoNonce proves static responses get a
+// policy without the per-request nonce work.
+func TestSecurityHeaders_BaselineCSPHasNoNonce(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/assets/favicon.svg", nil)
+	rec := serve(t, middleware.SecurityHeaders(middleware.IPConfig{}), req)
+
+	csp := rec.Header().Get("Content-Security-Policy")
+	assert.Contains(t, csp, "script-src 'self';")
+	assert.NotContains(t, csp, "'nonce-")
+	assert.Contains(t, csp, "style-src 'self';")
+	assert.NotContains(t, csp, "'unsafe-inline'")
+	assert.Contains(t, csp, "object-src 'none'")
+	assert.Contains(t, csp, "frame-ancestors 'none'")
+}
+
+func TestCSP_AddsNonce(t *testing.T) {
+	t.Parallel()
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+	rec := serve(t, middleware.CSP(discardLogger()), req)
 
 	csp := rec.Header().Get("Content-Security-Policy")
 	assert.Contains(t, csp, "script-src 'self' 'nonce-")
 	assert.NotEmpty(t, extractSecurityNonce(csp), "nonce value should not be empty")
+	assert.NotRegexp(t, `script-src [^;]*'unsafe-inline'`, csp)
 }
 
-func TestSecurity_CSPStyleSrcHasNoUnsafeInline(t *testing.T) {
+func TestCSP_NonceIsUniqueAcrossRequests(t *testing.T) {
 	t.Parallel()
-
-	cfg := middleware.IPConfig{TrustProxyHeaders: false}
-	mw := middleware.Security(discardLogger(), cfg)
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
-
-	csp := rec.Header().Get("Content-Security-Policy")
-	// htmx 4 injects its indicator CSS via adoptedStyleSheets, so style-src does
-	// not need 'unsafe-inline'.
-	assert.Contains(t, csp, "style-src 'self';")
-	assert.NotContains(t, csp, "style-src 'self' 'unsafe-inline'")
-}
-
-func TestSecurity_NonceIsUniqueAcrossRequests(t *testing.T) {
-	t.Parallel()
-
-	cfg := middleware.IPConfig{TrustProxyHeaders: false}
-	mw := middleware.Security(discardLogger(), cfg)
 
 	nonces := make([]string, 3)
-	for i := range 3 {
-		handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		}))
-
+	for i := range nonces {
 		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-		rec := httptest.NewRecorder()
-		handler.ServeHTTP(rec, req)
-
-		csp := rec.Header().Get("Content-Security-Policy")
-		nonces[i] = extractSecurityNonce(csp)
+		rec := serve(t, middleware.CSP(discardLogger()), req)
+		nonces[i] = extractSecurityNonce(rec.Header().Get("Content-Security-Policy"))
 		require.NotEmpty(t, nonces[i], "nonce[%d] should not be empty", i)
 	}
 
@@ -109,14 +112,11 @@ func TestSecurity_NonceIsUniqueAcrossRequests(t *testing.T) {
 	assert.NotEqual(t, nonces[0], nonces[2], "nonces should differ between requests")
 }
 
-func TestSecurity_NonceStoredInTemplContext(t *testing.T) {
+func TestCSP_NonceStoredInTemplContext(t *testing.T) {
 	t.Parallel()
 
-	cfg := middleware.IPConfig{TrustProxyHeaders: false}
-	mw := middleware.Security(discardLogger(), cfg)
-
 	var contextNonce string
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := middleware.CSP(discardLogger())(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		contextNonce = templ.GetNonce(r.Context())
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -131,77 +131,45 @@ func TestSecurity_NonceStoredInTemplContext(t *testing.T) {
 	assert.Equal(t, cspNonce, contextNonce, "CSP nonce and context nonce should match")
 }
 
-func TestSecurity_HSTSNotSetForPlainHTTP(t *testing.T) {
+func TestSecurityHeaders_HSTSNotSetForPlainHTTP(t *testing.T) {
 	t.Parallel()
 
-	cfg := middleware.IPConfig{TrustProxyHeaders: false}
-	mw := middleware.Security(discardLogger(), cfg)
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	rec := serve(t, middleware.SecurityHeaders(middleware.IPConfig{}), req)
 
 	assert.Empty(t, rec.Header().Get("Strict-Transport-Security"), "HSTS should not be set for plain HTTP")
 }
 
-func TestSecurity_HSTSSetWhenTLS(t *testing.T) {
+func TestSecurityHeaders_HSTSSetWhenTLS(t *testing.T) {
 	t.Parallel()
-
-	cfg := middleware.IPConfig{TrustProxyHeaders: false}
-	mw := middleware.Security(discardLogger(), cfg)
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "https://example.com/", nil)
 	req.TLS = &tls.ConnectionState{}
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	rec := serve(t, middleware.SecurityHeaders(middleware.IPConfig{}), req)
 
 	hsts := rec.Header().Get("Strict-Transport-Security")
 	assert.NotEmpty(t, hsts, "HSTS should be set for TLS requests")
 	assert.Contains(t, hsts, "max-age=31536000")
 }
 
-func TestSecurity_HSTSSetWhenForwardedProtoAndTrustProxies(t *testing.T) {
+func TestSecurityHeaders_HSTSSetWhenForwardedProtoAndTrustProxies(t *testing.T) {
 	t.Parallel()
-
-	cfg := middleware.IPConfig{TrustProxyHeaders: true}
-	mw := middleware.Security(discardLogger(), cfg)
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	req.Header.Set("X-Forwarded-Proto", "https")
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	rec := serve(t, middleware.SecurityHeaders(middleware.IPConfig{TrustProxyHeaders: true}), req)
 
 	hsts := rec.Header().Get("Strict-Transport-Security")
 	assert.NotEmpty(t, hsts, "HSTS should be set when X-Forwarded-Proto is https and proxy headers are trusted")
 	assert.Contains(t, hsts, "max-age=31536000")
 }
 
-func TestSecurity_HSTSNotSetWhenForwardedProtoButNoTrustProxies(t *testing.T) {
+func TestSecurityHeaders_HSTSNotSetWhenForwardedProtoButNoTrustProxies(t *testing.T) {
 	t.Parallel()
-
-	cfg := middleware.IPConfig{TrustProxyHeaders: false}
-	mw := middleware.Security(discardLogger(), cfg)
-
-	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
 
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	req.Header.Set("X-Forwarded-Proto", "https")
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, req)
+	rec := serve(t, middleware.SecurityHeaders(middleware.IPConfig{}), req)
 
 	assert.Empty(t, rec.Header().Get("Strict-Transport-Security"),
 		"HSTS should not be set when X-Forwarded-Proto is https but proxy headers are not trusted")
