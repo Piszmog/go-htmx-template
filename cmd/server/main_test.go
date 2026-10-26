@@ -93,19 +93,8 @@ func TestRunMigrate_CreatesSchema(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "migrate.sqlite3")
 	t.Setenv("DB_URL", path)
 
-	logger := slog.New(slog.DiscardHandler)
-	require.NoError(t, runMigrate(logger))
-
-	database, err := db.New(path)
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, database.Close()) })
-
-	var count int
-	err = database.DB().QueryRow(
-		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'authors'",
-	).Scan(&count)
-	require.NoError(t, err)
-	assert.Equal(t, 1, count)
+	require.NoError(t, runMigrate(slog.New(slog.DiscardHandler), nil))
+	assert.Equal(t, 1, authorsTableCount(t, path))
 }
 
 func TestExitCode_Help(t *testing.T) {
@@ -146,4 +135,84 @@ func TestExitCode_RejectsUnknownCommand(t *testing.T) {
 	assert.Equal(t, 2, code, "a typo must not silently start the server")
 	assert.Contains(t, out.String(), `unknown command "migrat"`)
 	assert.Contains(t, out.String(), "Usage: my-app")
+}
+
+func TestExitCode_RejectsUnexpectedArgument(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	code := exitCode(slog.New(slog.DiscardHandler), []string{"serve", "--prt", "9090"}, &out)
+
+	assert.Equal(t, 2, code, "a stray argument must not silently start the server")
+	assert.Contains(t, out.String(), `unexpected argument "--prt 9090"`)
+	assert.Contains(t, out.String(), "Usage: my-app")
+}
+
+func TestExitCode_MigrateFailure(t *testing.T) {
+	dbURL := filepath.Join(t.TempDir(), "missing", "db.sqlite3")
+	t.Setenv("DB_URL", dbURL)
+
+	var out bytes.Buffer
+	code := exitCode(slog.New(slog.DiscardHandler), []string{"migrate"}, &out)
+
+	assert.Equal(t, 1, code, "a failed migration must not report success")
+}
+
+func TestRunMigrate_DownRollsBack(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "down.sqlite3")
+	t.Setenv("DB_URL", path)
+
+	logger := slog.New(slog.DiscardHandler)
+	require.NoError(t, runMigrate(logger, nil))
+	assert.Equal(t, 1, authorsTableCount(t, path))
+
+	require.NoError(t, runMigrate(logger, []string{"down", "1"}))
+	assert.Equal(t, 0, authorsTableCount(t, path))
+}
+
+func TestRunMigrate_DownWithoutStepsRollsBackEverything(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "downall.sqlite3")
+	t.Setenv("DB_URL", path)
+
+	logger := slog.New(slog.DiscardHandler)
+	require.NoError(t, runMigrate(logger, nil))
+	assert.Equal(t, 1, authorsTableCount(t, path))
+
+	require.NoError(t, runMigrate(logger, []string{"down"}))
+	assert.Equal(t, 0, authorsTableCount(t, path))
+
+	// Rolling back an already clean schema is a no-op, not an error.
+	require.NoError(t, runMigrate(logger, []string{"down"}))
+}
+
+func TestRunMigrate_RejectsInvalidArguments(t *testing.T) {
+	t.Setenv("DB_URL", filepath.Join(t.TempDir(), "invalid.sqlite3"))
+
+	logger := slog.New(slog.DiscardHandler)
+	for _, args := range [][]string{
+		{"sideways"},
+		{"down", "many"},
+		{"down", "0"},
+		{"down", "1", "2"},
+		{"up", "3"},
+	} {
+		require.Error(t, runMigrate(logger, args), "%v", args)
+	}
+}
+
+// authorsTableCount reports how many tables named "authors" exist, which is how
+// these tests observe whether the up and down migrations ran.
+func authorsTableCount(t *testing.T, path string) int {
+	t.Helper()
+
+	database, err := db.New(path)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, database.Close()) })
+
+	var count int
+	err = database.DB().QueryRow(
+		"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'authors'",
+	).Scan(&count)
+	require.NoError(t, err)
+	return count
 }

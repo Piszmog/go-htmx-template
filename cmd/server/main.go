@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"go-htmx-template/internal/db"
@@ -27,13 +28,17 @@ var (
 	errInvalidRateLimit         = errors.New("invalid RATE_LIMIT value")
 	errInvalidTrustProxyHeaders = errors.New("invalid TRUST_PROXY_HEADERS value")
 	errInvalidMigrateOnStart    = errors.New("invalid MIGRATE_ON_START value")
+	errInvalidMigrateSteps      = errors.New("invalid migrate step count")
+	errUnexpectedMigrateArg     = errors.New("unexpected migrate argument")
+	errUnknownMigrateCommand    = errors.New("unknown migrate command")
 )
 
 const usage = `Usage: my-app [command]
 
 Commands:
-  serve    start the HTTP server (default)
-  migrate  apply the embedded migrations and exit
+  serve                      start the HTTP server (default)
+  migrate [up]               apply pending migrations and exit
+  migrate down [steps]       roll back the most recent migrations (all when omitted)
 
 Flags:
   -h, --help     show this help
@@ -72,23 +77,32 @@ func exitCode(logger *slog.Logger, args []string, stdout io.Writer) int {
 
 	switch command {
 	case "serve":
+		// A trailing argument is a typo like `serve --prt 9090`; starting the
+		// server anyway would hide it.
+		if len(args) > 1 {
+			return usageError(stdout, "unexpected argument", args[1:])
+		}
 		if err := run(logger); err != nil {
 			logger.Error("server error", "error", err)
 			return 1
 		}
 		return 0
 	case "migrate":
-		if err := runMigrate(logger); err != nil {
+		if err := runMigrate(logger, args[1:]); err != nil {
 			logger.Error("migration error", "error", err)
 			return 1
 		}
 		return 0
 	default:
-		// The message is the usage output itself; logging it too would print
-		// the same line twice.
-		_, _ = fmt.Fprintf(stdout, "unknown command %q\n\n%s", command, usage)
-		return exitUsage
+		return usageError(stdout, "unknown command", args)
 	}
+}
+
+// usageError reports a bad command line and returns the usage exit code. The
+// usage text is the message, so logging it would print the same line twice.
+func usageError(stdout io.Writer, problem string, args []string) int {
+	_, _ = fmt.Fprintf(stdout, "%s %q\n\n%s", problem, strings.Join(args, " "), usage)
+	return exitUsage
 }
 
 // printInfo writes the usage or the version and reports whether it handled the
@@ -163,7 +177,14 @@ func openDatabase() (db.Database, error) {
 	return db.New(url)
 }
 
-func runMigrate(logger *slog.Logger) error {
+// runMigrate applies or rolls back the embedded migrations. args is everything
+// after the "migrate" command.
+func runMigrate(logger *slog.Logger, args []string) error {
+	options, err := parseMigrateOptions(args)
+	if err != nil {
+		return err
+	}
+
 	database, err := openDatabase()
 	if err != nil {
 		return err
@@ -176,11 +197,61 @@ func runMigrate(logger *slog.Logger) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
 	defer cancel()
-	if err := db.Migrate(ctx, database.DB()); err != nil {
-		return fmt.Errorf("running migrations: %w", err)
+
+	if options.down {
+		return db.MigrateDown(ctx, database.DB(), options.steps)
 	}
 
-	return nil
+	return db.Migrate(ctx, database.DB())
+}
+
+const (
+	migrateUp   = "up"
+	migrateDown = "down"
+)
+
+// migrateOptions is the parsed form of the arguments after "migrate".
+type migrateOptions struct {
+	down  bool
+	steps int
+}
+
+func parseMigrateOptions(args []string) (migrateOptions, error) {
+	direction := migrateUp
+	var rest []string
+	if len(args) > 0 {
+		direction, rest = args[0], args[1:]
+	}
+
+	switch direction {
+	case migrateUp:
+		if len(rest) > 0 {
+			return migrateOptions{}, unexpectedArg(rest)
+		}
+		return migrateOptions{}, nil
+	case migrateDown:
+		if len(rest) > 1 {
+			return migrateOptions{}, unexpectedArg(rest[1:])
+		}
+		options := migrateOptions{down: true}
+		if len(rest) == 1 {
+			steps, err := strconv.Atoi(rest[0])
+			// Zero would silently mean "roll back everything", so reject it.
+			if err != nil || steps < 1 {
+				return migrateOptions{}, fmt.Errorf("%w: %s", errInvalidMigrateSteps, rest[0])
+			}
+			options.steps = steps
+		}
+		return options, nil
+	default:
+		return migrateOptions{}, fmt.Errorf("%w: %s", errUnknownMigrateCommand, direction)
+	}
+}
+
+// unexpectedArg reports the arguments left over after a valid migrate command,
+// so a typo like `migrate up 3` fails instead of silently doing nothing.
+func unexpectedArg(rest []string) error {
+	return fmt.Errorf("%w: %s", errUnexpectedMigrateArg, strings.Join(rest, " "))
 }
 
 // parseMigrateOnStart parses the MIGRATE_ON_START value.

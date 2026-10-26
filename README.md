@@ -32,22 +32,19 @@ make generate
 
 ## Run
 
-`air` is the primary way to run the applications for local development. It watches for file changes. When a file changes, it will rebuild and re-run the application. On each rebuild, `air` also applies any pending DB migrations via `./migrate.sh`.
+`air` is the primary way to run the applications for local development. It watches for file changes. When a file changes, it will rebuild and re-run the application. On each rebuild, `air` also applies any pending DB migrations by running the `migrate` subcommand.
 
 If running the binary directly (not via `air`), generate the artifacts and run migrations first:
 
 ```shell
 make generate
-./migrate.sh -p sqlite -u ./db.sqlite3
+go run ./cmd/server migrate
 ```
 
 `make generate` regenerates the templ components, the sqlc queries, and the Tailwind CSS. It accepts `VERSION` (default `dev`, used in the CSS filename) and `MINIFY=1` for production builds.
 
-The application binary can also apply the embedded migrations directly:
-
-```shell
-go run ./cmd/server migrate
-```
+The migrations are embedded in the binary, so `go run ./cmd/server migrate down <steps>` rolls back
+without any external tooling; omit the step count to roll back everything.
 
 When the application is running, go to http://localhost:8080/
 
@@ -141,7 +138,7 @@ A few different technologies are configured to help getting off the ground easie
   - Vendored at `internal/dist/assets/js/htmx@v4.0.0.min.js`
   - The script `upgrade_htmx.sh` is available to make upgrading easier; it pulls the bundle from npm (via jsdelivr) and validates it before replacing anything
 - [air](https://github.com/air-verse/air) for live reloading of the application.
-- [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations. The migrations are embedded and applied by the `migrate` subcommand or `MIGRATE_ON_START`; `./migrate.sh` is the equivalent shell entrypoint.
+- [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations. The migrations are embedded and applied by the `migrate` subcommand or `MIGRATE_ON_START`.
 - [playwright-go](https://github.com/playwright-community/playwright-go) for E2E testing.
 
 ## Security
@@ -227,7 +224,6 @@ Comprehensive security tests are included in `e2e/security_test.go`:
 ├── styles/input.css         # Tailwind source
 ├── Dockerfile
 ├── Makefile                 # generate, build, test, lint, migrate targets
-├── migrate.sh
 ├── sqlc.yml
 ├── update_module.sh
 └── upgrade_htmx.sh
@@ -256,18 +252,17 @@ This is where `templ` files live in `internal/components/`. Anything you want to
 
 This project uses [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
 The migration files are embedded in the binary, so the same migrations run from the `migrate`
-subcommand, from `MIGRATE_ON_START`, and from `./migrate.sh`:
+subcommand and from `MIGRATE_ON_START`:
 
 ```shell
-go run ./cmd/server migrate    # or: make migrate
+go run ./cmd/server migrate          # apply pending migrations (or: make migrate)
+go run ./cmd/server migrate down 1   # roll back the most recent migration
+go run ./cmd/server migrate down     # roll back everything
 ```
 
 `MIGRATE_ON_START=true` applies pending migrations before the server starts; the Docker image sets
-it by default. `air` runs `./migrate.sh` on every rebuild. See [Deploy](#deploy) for when to prefer
+it by default. `air` runs `migrate` on every rebuild. See [Deploy](#deploy) for when to prefer
 each option.
-
-`migrate.sh` accepts `-p <protocol>`, `-u <url>`, `-d <direction>` (default: `up`),
-`-t <auth_token>`, and `-s <steps>` (for down). Run `./migrate.sh -h` for full usage.
 
 To create a new migration pair:
 
