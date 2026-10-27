@@ -11,3 +11,8 @@ indent_size = 4
 [*.{yml,yaml,json,md,css}]
 indent_style = space
 indent_size = 2
+
+# just recipes are indented with spaces; `just --fmt` normalizes to four.
+[justfile]
+indent_style = space
+indent_size = 4

@@ -141,6 +141,9 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache-dependency-path: 'go.sum'
+      - uses: extractions/setup-just@v4
+        with:
+          just-version: 1.58.0
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
         with:

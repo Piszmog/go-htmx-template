@@ -1,6 +1,6 @@
 ## Build
 # The builder runs on the native build platform and cross-compiles for the
-# target. The generators in `make generate` (templ, sqlc, go-tw) are `go tool`
+# target. The generators in `just generate` (templ, sqlc, go-tw) are `go tool`
 # directives, so they are compiled from source before they run; emulating that
 # under QEMU made the linux/arm64 leg take longer than CI's 20 minute limit.
 FROM --platform=$BUILDPLATFORM golang:1.27 AS build
@@ -11,6 +11,11 @@ ARG TARGETARCH
 
 WORKDIR /app
 
+# `just` runs the recipes in the justfile. The image holds a single static
+# binary, so copying it avoids installing a toolchain. Bump the tag by hand:
+# Dependabot only tracks FROM instructions, not COPY --from.
+COPY --from=ghcr.io/casey/just:1.58.0 /just /usr/local/bin/just
+
 # Cache module downloads separately from source changes
 COPY go.mod go.sum ./
 RUN go mod download
@@ -19,8 +24,8 @@ RUN go mod download
 # and does not read VERSION, so keeping it in its own layer means a version bump
 # alone does not re-run templ and sqlc.
 COPY ./ .
-RUN make generate-go
-RUN make generate-css VERSION=${VERSION} MINIFY=1
+RUN just generate-go
+RUN just VERSION=${VERSION} MINIFY=1 generate-css
 
 # Build static binary for the requested platform
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \

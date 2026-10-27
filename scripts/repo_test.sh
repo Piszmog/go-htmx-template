@@ -98,6 +98,12 @@ grep -q '^\*\.sqlite3\*$' .dockerignore ||
 ! grep -q 'go get -u all' README.md ||
 	fail "README.md should not recommend go get -u all"
 
+[ -f justfile ] ||
+	fail "justfile must exist; it is the task runner entry point"
+
+! grep -qE 'make (generate|generate-go|generate-css|build|run|test|test-e2e|lint|migrate)' README.md ||
+	fail "README.md must use just, not make"
+
 grep -qi 'per-instance' README.md ||
 	fail "README.md should document that rate limiting is per-instance"
 
