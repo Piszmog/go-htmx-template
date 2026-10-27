@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 )
 
@@ -19,7 +20,11 @@ func sqliteDSN(path string) (string, error) {
 		}
 		u = parsed
 	} else {
-		u = &url.URL{Scheme: "file", Path: path}
+		abs, err := filepath.Abs(path)
+		if err != nil {
+			return "", fmt.Errorf("resolving database path: %w", err)
+		}
+		u = &url.URL{Scheme: "file", Path: fileURLPath(abs)}
 	}
 
 	q := u.Query()
@@ -29,4 +34,16 @@ func sqliteDSN(path string) (string, error) {
 	u.RawQuery = q.Encode()
 
 	return u.String(), nil
+}
+
+// fileURLPath renders an absolute filesystem path as the path component of a
+// file: URL. The path must be absolute, or url.URL writes it into the authority
+// slot ("file://./db.sqlite3"), which the driver rejects as an invalid URI
+// authority. Windows drive letters need a leading slash for the same reason.
+func fileURLPath(abs string) string {
+	path := filepath.ToSlash(abs)
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return path
 }

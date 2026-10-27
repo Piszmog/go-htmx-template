@@ -85,7 +85,7 @@ The application reads environment variables from the process; it does **not** lo
 | `PORT` | `8080` | HTTP server port |
 | `LOG_LEVEL` | `info` | Logging level: `debug`, `info`, `warn`, `error` |
 | `LOG_OUTPUT` | `text` | Log format: `text` or `json` |
-| `DB_URL` | `./db.sqlite3` | Path or `file:` URL for the SQLite database |
+| `DB_URL` | `./db.sqlite3` | Path or `file:` URL for the SQLite database; relative paths resolve against the working directory |
 | `MIGRATE_ON_START` | `false` | Apply embedded migrations before serving |
 | `RATE_LIMIT` | `50` | Requests per minute per IP address |
 | `TRUST_PROXY_HEADERS` | `false` | Trust `X-Forwarded-For` / `X-Real-IP` from a single reverse proxy |

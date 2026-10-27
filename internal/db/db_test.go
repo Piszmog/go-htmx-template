@@ -86,6 +86,17 @@ func TestNew_PathWithSpecialCharacters(t *testing.T) {
 	require.NoError(t, err, "database should be created at the requested path")
 }
 
+// TestNew_DefaultRelativePath is a regression test for the documented default
+// DB_URL (./db.sqlite3), which used to be rendered as file://./db.sqlite3 and
+// rejected by the driver with "invalid uri authority: .".
+func TestNew_DefaultRelativePath(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	database, err := db.New("./db.sqlite3")
+	require.NoError(t, err)
+	require.NoError(t, database.Close())
+}
+
 func TestNew_InvalidPath(t *testing.T) {
 	t.Parallel()
 
