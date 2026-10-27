@@ -5,6 +5,9 @@ set minimum-version := "1.55.0"
 
 # Version stamped into the generated CSS filename.
 VERSION := "dev"
+# Tailwind CSS version go-tw downloads. go-tw defaults to "latest", which would
+# let the generated bundle change with no commit behind it; pin it and bump by hand.
+TAILWIND_VERSION := "v4.3.3"
 # Non-empty and not "0" minifies the generated CSS.
 MINIFY := ""
 
@@ -30,6 +33,7 @@ generate-css:
     rm -f ./internal/dist/assets/css/output@*.css
     go tool go-tw -i ./styles/input.css \
         -o ./internal/dist/assets/css/output@{{ VERSION }}.css \
+        -version {{ TAILWIND_VERSION }} \
         {{ if MINIFY == "" { "" } else if MINIFY == "0" { "" } else { "--minify" } }}
 
 # Build the server binary into ./tmp/main.

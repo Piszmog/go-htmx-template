@@ -43,9 +43,9 @@ This file contains comprehensive guidelines for AI coding agents working in this
 ### Code Generation
 - **Generate all**: `just generate` (templ components, sqlc queries, Tailwind CSS)
 - **Generated Go only**: `just generate-go`; `generate-templ` and `generate-sqlc` run one generator each (the Dockerfile uses these to keep each generator in its own layer)
-- **Tailwind CSS**: `just generate-css`; add `VERSION=<v> MINIFY=1` before the recipe for a release build
+- **Tailwind CSS**: `just generate-css`; add `VERSION=<v> MINIFY=1` before the recipe for a release build. The downloaded Tailwind binary is pinned by `TAILWIND_VERSION` in the `justfile` — bump it deliberately, since `go-tw` defaults to `latest` and would otherwise change the bundle with no commit behind it
 - **Underlying commands** (what the recipes run): `go tool templ generate -path ./internal/components`,
-  `go tool sqlc generate`, `go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css`
+  `go tool sqlc generate`, `go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css -version v4.3.3`
 
 ### Database Migrations
 - **Create migration**: `go run -tags sqlite github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1 create -ext sql -dir internal/db/migrations <name>`
