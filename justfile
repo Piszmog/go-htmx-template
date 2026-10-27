@@ -14,10 +14,16 @@ default: generate
 # Regenerate templ components, sqlc queries, and Tailwind CSS.
 generate: generate-go generate-css
 
-# Generate Go code from templ files and SQL queries.
-generate-go:
+# Generate Go code from templ files.
+generate-templ:
     go tool templ generate -path ./internal/components
+
+# Generate Go code from SQL queries.
+generate-sqlc:
     go tool sqlc generate
+
+# Generate Go code from templ files and SQL queries.
+generate-go: generate-templ generate-sqlc
 
 # Build the Tailwind CSS bundle for VERSION.
 generate-css:

@@ -20,11 +20,34 @@ COPY --from=ghcr.io/casey/just:1.58.0 /just /usr/local/bin/just
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source and generate artifacts. Generated Go is architecture independent
-# and does not read VERSION, so keeping it in its own layer means a version bump
-# alone does not re-run templ and sqlc.
+# Warm the generator toolchain into its own layer, keyed on go.mod, the justfile,
+# and styles/ rather than on the whole tree. `go tool` compiles templ, sqlc, and
+# go-tw from source, and go-tw downloads the Tailwind binary; both caches live in
+# this layer, so without this a one-line source change recompiled sqlc and
+# re-downloaded Tailwind from GitHub. The warm-up runs the real generate-css
+# recipe so it cannot drift from what the build below produces; its output is
+# deleted and replaced by the VERSION-specific bundle at the end.
+COPY justfile ./
+COPY ./styles ./styles
+RUN go build -o /dev/null $(go list tool) \
+    && just MINIFY=1 generate-css
+
+# Give each generator its own COPY so a change to one does not re-run the other.
+# sqlc comes first because schema changes are rarer than component changes, and
+# each layer below it is discarded: sqlc reads only sqlc.yml and internal/db,
+# templ only internal/components.
+COPY sqlc.yml ./
+COPY ./internal/db ./internal/db
+RUN just generate-sqlc
+
+COPY ./internal/components ./internal/components
+RUN just generate-templ
+
+# Everything else: handlers, entrypoint, embedded assets. Generated Go is
+# excluded by .dockerignore, so the generated layers above survive this copy.
 COPY ./ .
-RUN just generate-go
+
+# VERSION names the CSS bundle, so a version bump re-runs only this layer.
 RUN just VERSION=${VERSION} MINIFY=1 generate-css
 
 # Build static binary for the requested platform

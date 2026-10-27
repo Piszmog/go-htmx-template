@@ -6,7 +6,7 @@ This file contains comprehensive guidelines for AI coding agents working in this
 
 ### Task runner
 - **Entry point**: `just` — the `justfile` wraps the common commands. Run `just --list` for the recipe list
-- **Recipes**: `generate` (default), `generate-go`, `generate-css`, `build`, `run`, `test`, `test-e2e`, `lint`, `migrate`
+- **Recipes**: `generate` (default), `generate-go`, `generate-templ`, `generate-sqlc`, `generate-css`, `build`, `run`, `test`, `test-e2e`, `lint`, `migrate`
 - **Overrides**: `just VERSION=v2026.10.0 MINIFY=1 generate` — flags first, then overrides, then the recipe
 - **Formatting**: run `just --fmt` after editing the `justfile`; CI enforces `just --fmt --check`
 - **Version**: `just` >= 1.55 (`set minimum-version`); CI and the Docker build pin 1.58.0
@@ -42,7 +42,7 @@ This file contains comprehensive guidelines for AI coding agents working in this
 
 ### Code Generation
 - **Generate all**: `just generate` (templ components, sqlc queries, Tailwind CSS)
-- **Generated Go only**: `just generate-go`
+- **Generated Go only**: `just generate-go`; `generate-templ` and `generate-sqlc` run one generator each (the Dockerfile uses these to keep each generator in its own layer)
 - **Tailwind CSS**: `just generate-css`; add `VERSION=<v> MINIFY=1` before the recipe for a release build
 - **Underlying commands** (what the recipes run): `go tool templ generate -path ./internal/components`,
   `go tool sqlc generate`, `go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css`
