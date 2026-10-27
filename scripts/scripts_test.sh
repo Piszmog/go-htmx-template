@@ -26,12 +26,18 @@ package sample
 
 import "go-htmx-template/internal/db"
 EOF
+	cat >"$dir/justfile" <<'EOF'
+# go-htmx-template
+default:
+    go build ./...
+EOF
 	chmod 755 "$dir/upgrade_htmx.sh"
 
 	(cd "$dir" && ./update_module.sh "github.com/me/app" >/dev/null)
 
 	[ -x "$dir/upgrade_htmx.sh" ] || fail "update_module.sh removed the executable bit from upgrade_htmx.sh"
 	grep -q 'github.com/me/app/internal/db' "$dir/sample.go" || fail "update_module.sh did not rewrite sample.go"
+	grep -q 'github.com/me/app' "$dir/justfile" || fail "update_module.sh did not rewrite justfile"
 	grep -q 'go-htmx-template' "$dir/update_module.sh" || fail "update_module.sh rewrote itself"
 
 	pass "update_module.sh preserves modes and skips itself"

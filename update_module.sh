@@ -20,7 +20,7 @@ find . \
 	-type f ! -name update_module.sh \( -name '*.go' -o -name '*.mod' -o -name '*.sum' -o -name '*.templ' \
 	-o -name '*.sql' -o -name '*.sh' -o -name '*.md' -o -name '*.yml' -o -name '*.yaml' \
 	-o -name '*.json' -o -name '*.toml' -o -name '*.css' -o -name '*.js' -o -name '*.html' \
-	-o -name '*.txt' -o -name 'Dockerfile' -o -name 'Makefile' \) \
+	-o -name '*.txt' -o -name 'Dockerfile' -o -name 'justfile' \) \
 	-print0 | while IFS= read -r -d '' file; do
 	# cp -p preserves modes; redirecting into the copy keeps them.
 	cp -p "$file" "$file.tmp"

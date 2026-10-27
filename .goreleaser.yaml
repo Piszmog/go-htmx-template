@@ -5,7 +5,7 @@ dist: goreleaser-dist
 before:
   hooks:
     - go mod download
-    - make generate VERSION={{ .Tag }} MINIFY=1
+    - just VERSION={{ .Tag }} MINIFY=1 generate
 
 builds:
   - main: ./cmd/server

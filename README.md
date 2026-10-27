@@ -24,10 +24,10 @@ go get -u ./...
 go get -u tool
 ```
 
-Finally, generate the templ components, sqlc queries, and Tailwind CSS:
+Finally, generate the templ components, sqlc queries, and Tailwind CSS (requires [`just`](#prerequisites)):
 
 ```shell
-make generate
+just generate
 ```
 
 ## Run
@@ -37,11 +37,13 @@ make generate
 If running the binary directly (not via `air`), generate the artifacts and run migrations first:
 
 ```shell
-make generate
+just generate
 go run ./cmd/server migrate
 ```
 
-`make generate` regenerates the templ components, the sqlc queries, and the Tailwind CSS. It accepts `VERSION` (default `dev`, used in the CSS filename) and `MINIFY=1` for production builds.
+`just generate` regenerates the templ components, the sqlc queries, and the Tailwind CSS. Overrides go
+*before* the recipe: `just VERSION=v2026.10.0 MINIFY=1 generate`. `VERSION` defaults to `dev` and is part
+of the generated CSS filename; `MINIFY=1` minifies the output.
 
 The migrations are embedded in the binary, so `go run ./cmd/server migrate down <steps>` rolls back
 without any external tooling; omit the step count to roll back everything.
@@ -50,12 +52,15 @@ When the application is running, go to http://localhost:8080/
 
 ### Prerequisites
 
+- Install [`just`](https://github.com/casey/just#installation), 1.55 or newer
+  (`brew install just`, `go install github.com/casey/just@latest`, or your package manager)
 - Install [air](https://github.com/air-verse/air#installation)
 
 `templ`, `sqlc`, and `tailwindcss` (via [`go-tw`](https://github.com/Piszmog/go-tw)) are included as `go tool` directives. When running
 the application for the first time, it may take a little time as `templ`, `sqlc` and `go-tw` are being downloaded and installed.
 
-The `Makefile` wraps the common commands: `make generate`, `make build`, `make test`, `make test-e2e`, `make lint`, and `make migrate`.
+The `justfile` wraps the common commands: `just generate`, `just build`, `just test`, `just test-e2e`,
+`just lint`, and `just migrate`. Run `just --list` to see every recipe with its description.
 
 ### air
 
@@ -138,6 +143,7 @@ A few different technologies are configured to help getting off the ground easie
   - Vendored at `internal/dist/assets/js/htmx@v4.0.0.min.js`
   - The script `upgrade_htmx.sh` is available to make upgrading easier; it pulls the bundle from npm (via jsdelivr) and validates it before replacing anything
 - [air](https://github.com/air-verse/air) for live reloading of the application.
+- [just](https://github.com/casey/just) as the task runner; recipes live in the `justfile`.
 - [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations. The migrations are embedded and applied by the `migrate` subcommand or `MIGRATE_ON_START`.
 - [playwright-go](https://github.com/playwright-community/playwright-go) for E2E testing.
 
@@ -223,7 +229,7 @@ Comprehensive security tests are included in `e2e/security_test.go`:
 ├── e2e/                     # Playwright end-to-end tests
 ├── styles/input.css         # Tailwind source
 ├── Dockerfile
-├── Makefile                 # generate, build, test, lint, migrate targets
+├── justfile                 # generate, build, test, lint, migrate recipes
 ├── sqlc.yml
 ├── update_module.sh
 └── upgrade_htmx.sh
@@ -248,14 +254,14 @@ This is where `templ` files live in `internal/components/`. Anything you want to
 ### DB
 
 `sqlc` generates `internal/db/queries` from `internal/db/queries/query.sql` and the schema in
-`internal/db/migrations`. Add queries to `query.sql`, then run `make generate`.
+`internal/db/migrations`. Add queries to `query.sql`, then run `just generate`.
 
 This project uses [golang migrate](https://github.com/golang-migrate/migrate) for DB migrations.
 The migration files are embedded in the binary, so the same migrations run from the `migrate`
 subcommand and from `MIGRATE_ON_START`:
 
 ```shell
-go run ./cmd/server migrate          # apply pending migrations (or: make migrate)
+go run ./cmd/server migrate          # apply pending migrations (or: just migrate)
 go run ./cmd/server migrate down 1   # roll back the most recent migration
 go run ./cmd/server migrate down     # roll back everything
 ```
@@ -288,7 +294,7 @@ To test the UI, the `e2e` directory contains the Go tests for performing End to 
 run the tests, run the command
 
 ```shell
-go test -v ./... -tags=e2e
+just test-e2e
 ```
 
 The end to end tests, will start up the app, on a random port, seeding the database using the 
@@ -363,7 +369,7 @@ This package in `internal/version/` allows you to set a version at build time. I
 the same version before building:
 
 ```shell
-make generate VERSION=v2026.10.0
+just VERSION=v2026.10.0 generate
 go build -o ./app -ldflags="-X go-htmx-template/internal/version.Value=v2026.10.0" ./cmd/server
 ```
 

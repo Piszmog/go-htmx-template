@@ -4,17 +4,24 @@ This file contains comprehensive guidelines for AI coding agents working in this
 
 ## Build/Test/Lint Commands
 
+### Task runner
+- **Entry point**: `just` — the `justfile` wraps the common commands. Run `just --list` for the recipe list
+- **Recipes**: `generate` (default), `generate-go`, `generate-css`, `build`, `run`, `test`, `test-e2e`, `lint`, `migrate`
+- **Overrides**: `just VERSION=v2026.10.0 MINIFY=1 generate` — flags first, then overrides, then the recipe
+- **Formatting**: run `just --fmt` after editing the `justfile`; CI enforces `just --fmt --check`
+- **Version**: `just` >= 1.55 (`set minimum-version`); CI and the Docker build pin 1.58.0
+
 ### Development
-- **Run with live reload**: `air` (auto-generates templ, sqlc, tailwind CSS on file changes)
-- **Manual build**: `go build -o ./tmp/main ./cmd/server`
-- **Run without air**: `go run ./cmd/server`
+- **Run with live reload**: `air` (auto-generates templ, sqlc, tailwind CSS on file changes; needs `just` on `PATH`)
+- **Manual build**: `just build` (`go build -o ./tmp/main ./cmd/server`)
+- **Run without air**: `just run` (`go run ./cmd/server`)
 
 ### Testing
-- **All tests**: `go test -v ./...`
-- **With race detector**: `go test -race ./...`
+- **All tests**: `just test` — regenerates generated Go, then runs `go test -race ./...`
+- **All tests without the race detector**: `go test -v ./...`
 - **Single package**: `go test -v ./internal/server/handler`
 - **Single test**: `go test -v ./internal/server/handler -run TestHome`
-- **E2E tests only**: `go test -v ./... -tags=e2e`
+- **E2E tests only**: `just test-e2e` (`go test ./e2e -tags=e2e`)
 - **E2E single test**: `go test -v ./e2e -tags=e2e -run TestHomePage`
 - **Headful E2E** (see browser): `HEADFUL=1 go test -v ./e2e -tags=e2e`
 - **Different browser**: `BROWSER=firefox go test -v ./e2e -tags=e2e` (chromium, firefox, webkit)
@@ -28,15 +35,17 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **Vulnerability scan**: `govulncheck ./...` (install: `go install golang.org/x/vuln/cmd/govulncheck@latest`)
 
 ### Linting
-- **Lint all**: `golangci-lint run`
+- **Lint all**: `just lint` (regenerates generated Go, `golangci-lint run`, `go tool sqlc vet`)
+- **Lint Go only**: `golangci-lint run`
 - **Lint with fixes**: `golangci-lint run --fix`
 - **SQL lint**: `go tool sqlc vet`
 
 ### Code Generation
-- **Generate all**: `go tool templ generate -path ./internal/components && go tool sqlc generate`
-- **Templ only**: `go tool templ generate -path ./internal/components`
-- **SQLC only**: `go tool sqlc generate`
-- **Tailwind CSS**: `go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css`
+- **Generate all**: `just generate` (templ components, sqlc queries, Tailwind CSS)
+- **Generated Go only**: `just generate-go`
+- **Tailwind CSS**: `just generate-css`; add `VERSION=<v> MINIFY=1` before the recipe for a release build
+- **Underlying commands** (what the recipes run): `go tool templ generate -path ./internal/components`,
+  `go tool sqlc generate`, `go tool go-tw -i ./styles/input.css -o ./internal/dist/assets/css/output@dev.css`
 
 ### Database Migrations
 - **Create migration**: `go run -tags sqlite github.com/golang-migrate/migrate/v4/cmd/migrate@v4.19.1 create -ext sql -dir internal/db/migrations <name>`
@@ -44,7 +53,7 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **Up migrations**: Write schema changes in `.up.sql` (e.g., `CREATE TABLE`, `ALTER TABLE`)
 - **Down migrations**: Write rollback logic in `.down.sql` (e.g., `DROP TABLE`)
 - **Auto-run**: `air` runs `go run ./cmd/server migrate` automatically on each rebuild (see `.air.toml` `pre_cmd`). The server applies the embedded migrations on startup only when `MIGRATE_ON_START=true` (the Docker image sets it).
-- **Manual run**: `go run ./cmd/server migrate` (up) or `go run ./cmd/server migrate down 1` (rollback); `migrate down` with no step count rolls back everything
+- **Manual run**: `just migrate` (up) or `go run ./cmd/server migrate down 1` (rollback); `migrate down` with no step count rolls back everything
 - **Migration naming**: Use descriptive names (e.g., `add_users_table`, `add_email_to_authors`)
 
 ### Dependencies
@@ -203,7 +212,14 @@ This file contains comprehensive guidelines for AI coding agents working in this
 - **Test setup**: Automatic app startup, database seeding, random port allocation
 - **Browser support**: Chromium (default), Firefox, WebKit via `BROWSER` env var
 
+## Stacked PRs
+- Multi-part work goes in a `gh stack`: branches follow `<area>/<slug>` and each PR is based on the layer below
+- `gh stack init <bottom>` then `gh stack add <next>`; keep one commit per layer so `submit --auto` takes the PR title from the commit subject
+- `gh stack submit --auto --open` opens the PRs; merge with `gh stack merge <top-pr> --yes` (`gh pr merge` cannot merge a stack)
+- CI runs per PR against its own branch, so the top layer is validated on top of the layers below it
+
 ## Project Structure
+- `justfile`: Task runner recipes (generate, build, test, lint, migrate)
 - `cmd/server/`: Application entrypoint with main.go
 - `internal/`: All implementation packages (prevents external imports)
   - `components/`: templ files (*.go files auto-generated, ignored by git)
@@ -221,4 +237,4 @@ All application code lives in `internal/` following Go's official server project
 - Signals this is a server application, not a reusable library
 - Follows [go.dev/doc/modules/layout](https://go.dev/doc/modules/layout) "Server project" pattern
 - `cmd/server/` contains the application entrypoint
-- Only `e2e/` (tests) and `styles/` (build inputs) stay at root
+- Only `e2e/` (tests), `styles/` (build inputs), and the `justfile` stay at root

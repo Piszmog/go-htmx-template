@@ -26,7 +26,7 @@ tmp_dir = "tmp"
   ]
   pre_cmd = [
     "pkill -f './tmp/main' || true",
-    "make generate",
+    "just generate",
     "go run ./cmd/server migrate",
   ]
   rerun = true
