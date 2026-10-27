@@ -167,7 +167,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ env.SHA }}
-      - uses: docker/setup-qemu-action@v4
+      # No QEMU: the builder stage runs on $BUILDPLATFORM and cross-compiles with
+      # GOOS/GOARCH, and the runtime stage only COPYs into an already multi-arch
+      # image, so no target-arch code is ever executed during the build.
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:

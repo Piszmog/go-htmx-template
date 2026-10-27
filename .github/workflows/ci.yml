@@ -134,5 +134,11 @@ jobs:
           context: .
           push: false
           tags: local/go-htmx-template:pr-${{ github.event.pull_request.number }}
+          # Build a non-dev VERSION so CI covers the release path. The builder
+          # prewarms output@dev.css, and only the recipe's `rm -f output@*.css`
+          # keeps two bundles from shipping; dist.AssetPath fails on more than
+          # one match, so that class of bug must not wait for a release.
+          build-args: |
+            VERSION=v0.0.0-ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
