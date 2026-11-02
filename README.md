@@ -16,18 +16,22 @@ Once cloned, run the `update_module.sh` script to change the module to your modu
 
 Once ran, delete the script.
 
+Then generate the templ components, sqlc queries, and Tailwind CSS (requires [`just`](#prerequisites)):
+
+```shell
+just generate
+```
+
+Generate before running `go mod tidy`. The generated Go files are gitignored, so a fresh clone has none
+of them. Without them, `go mod tidy` cannot resolve `internal/components/...` and
+`internal/db/queries/...` inside the new module, and it tries to download them from the network instead.
+
 Then you can upgrade your module dependencies with
 
 ```shell
 go mod tidy
 go get -u ./...
 go get -u tool
-```
-
-Finally, generate the templ components, sqlc queries, and Tailwind CSS (requires [`just`](#prerequisites)):
-
-```shell
-just generate
 ```
 
 ## Run
