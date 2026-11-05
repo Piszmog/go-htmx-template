@@ -8,7 +8,7 @@ require (
 	github.com/mxschmitt/playwright-go v0.6201.1
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/time v0.16.0
-	modernc.org/sqlite v1.61.0
+	modernc.org/sqlite v1.61.1
 )
 
 require (
